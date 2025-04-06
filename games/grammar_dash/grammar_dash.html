@@ -1,0 +1,637 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Word Runner - Platformer</title>
+    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.js"></script>
+    <style>
+        body {
+            font-family: 'Press Start 2P', cursive;
+            background-color: #d1fae5;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            flex-direction: column;
+            color: #1f2937;
+            overflow: hidden;
+        }
+        #gameContainer {
+            border: 4px solid #4b5563;
+            background-color: #ffffff;
+            position: relative;
+            border-radius: 10px;
+            box-shadow: 0 10px 20px rgba(0,0,0,0.2);
+            width: 90%;
+            max-width: 800px;
+            margin: 20px auto;
+            padding: 15px;
+        }
+        canvas {
+            display: block;
+            background-color: #e0f2fe;
+            width: 100%;
+            height: 450px;
+            border-radius: 6px;
+            cursor: pointer;
+            border: 2px solid #9ca3af;
+        }
+        .button {
+            font-family: 'Press Start 2P', cursive;
+            background-image: linear-gradient(to bottom, #fdba74, #f97316); /* Orange gradient */
+            color: white;
+            padding: 10px 18px; /* Slightly smaller padding */
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px; /* Slightly smaller font */
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.5);
+            box-shadow: 0 4px 6px rgba(0,0,0,0.2);
+            transition: all 0.2s ease;
+            margin: 5px; /* Smaller margin */
+            text-decoration: none; /* Remove underline from link button */
+            display: inline-block; /* Align link button properly */
+        }
+        .button:hover {
+            background-image: linear-gradient(to bottom, #f97316, #ea580c);
+            transform: translateY(-2px);
+            box-shadow: 0 6px 8px rgba(0,0,0,0.3);
+        }
+        .button:active {
+            transform: translateY(0px);
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+        }
+        /* Specific style for mute button */
+        .mute-button {
+             background-image: linear-gradient(to bottom, #60a5fa, #3b82f6); /* Blue */
+        }
+        .mute-button:hover {
+             background-image: linear-gradient(to bottom, #3b82f6, #2563eb);
+        }
+        .mute-button.muted { /* Style when muted */
+             background-image: linear-gradient(to bottom, #f87171, #ef4444); /* Red */
+        }
+         .mute-button.muted:hover {
+             background-image: linear-gradient(to bottom, #ef4444, #dc2626);
+         }
+
+        /* Specific style for home button */
+        .home-button {
+             background-image: linear-gradient(to bottom, #34d399, #059669); /* Green */
+        }
+         .home-button:hover {
+             background-image: linear-gradient(to bottom, #059669, #047857);
+         }
+
+        #controls {
+            margin-top: 20px;
+            text-align: center;
+        }
+        #messageBox {
+            position: absolute; top: 50%; left: 50%;
+            transform: translate(-50%, -50%);
+            background-color: rgba(0, 0, 0, 0.9); color: white;
+            padding: 25px; border-radius: 10px; text-align: center;
+            font-size: 16px; line-height: 1.7; z-index: 10;
+            display: none; flex-direction: column; align-items: center;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.5);
+            width: 85%; max-width: 450px;
+        }
+        #statsDisplay {
+            font-size: 20px; margin-bottom: 15px;
+            color: #1e3a8a;
+            text-align: center;
+            display: flex;
+            justify-content: space-between;
+            padding: 0 20px;
+        }
+        .heart { color: #ef4444; font-size: 24px; margin-left: 2px; }
+    </style>
+</head>
+<body>
+
+    <div id="gameContainer">
+        <h1 class="text-3xl font-bold text-center mb-5 text-blue-900">Word Runner Adventures</h1>
+        <div id="statsDisplay">
+            <span id="scoreBoard">Score: 0</span>
+            <span id="livesBoard">Lives: <span class="heart">❤️</span><span class="heart">❤️</span><span class="heart">❤️</span></span>
+        </div>
+        <canvas id="gameCanvas"></canvas>
+        <div id="controls">
+            <button id="startButton" class="button">Start Game</button>
+            <button id="restartButton" class="button" style="display: none;">Restart</button>
+            <button id="muteButton" class="button mute-button">Mute</button>
+            <a href="../../index.html" id="homeButton" class="button home-button">Home</a>
+        </div>
+        <div id="messageBox">
+            <p id="messageText"></p>
+            <button id="messageButton" class="button mt-4">OK</button>
+        </div>
+    </div>
+
+    <script>
+        // --- Game Setup ---
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        const startButton = document.getElementById('startButton');
+        const restartButton = document.getElementById('restartButton');
+        const muteButton = document.getElementById('muteButton'); // Get mute button
+        const scoreBoard = document.getElementById('scoreBoard');
+        const livesBoard = document.getElementById('livesBoard');
+        const messageBox = document.getElementById('messageBox');
+        const messageText = document.getElementById('messageText');
+        const messageButton = document.getElementById('messageButton');
+
+        let gameWidth, gameHeight;
+        const floorHeight = 40;
+
+        // Game State
+        let score = 0;
+        let lives = 3;
+        let gameRunning = false;
+        let animationFrameId;
+        let gravity = 0.6;
+        let jumpForce = -13;
+        let gameSpeed = 2.5;
+        let maxGameSpeed = 6;
+        let playerInvincible = false;
+        let invincibilityTimer = 0;
+        const invincibilityDuration = 120;
+        let isMuted = false; // Mute state tracking
+        let audioStarted = false; // Track if Tone.start() has been called
+
+        // Player properties
+        const player = {
+            width: 35, height: 45, x: 50, y: 0,
+            velocityY: 0, isJumping: false, onPlatform: false,
+            skinColor: '#fde68a', hairColor: '#a16207', shirtColor: '#facc15', pantsColor: '#2563eb'
+        };
+
+        // World Elements
+        let platforms = []; let obstacles = []; let words = []; let backgroundElements = [];
+        let lastPlatformX = 0; let platformYVariance = 80;
+        let initialSpawnRate = 150; let currentSpawnRate = initialSpawnRate; let minSpawnRate = 60;
+        let generationCheckCounter = 0;
+
+        // Word Lists
+        const goodWords = ["run", "jump", "play", "read", "write", "fast", "good", "happy", "cat", "dog", "sun", "moon", "tree", "book", "smile"];
+        const badWords = ["rnu", "jomp", "pley", "reed", "wriet", "fsat", "goood", "hapyy", "kat", "dgo", "sn", "mon", "tre", "bok", "smiel"];
+
+        // --- Audio Setup (Tone.js) ---
+        let musicLoop;
+        let jumpSynth, collectSynth, errorSynth, loseLifeSynth, gameOverSynth;
+
+        function setupAudio() {
+            // Synths for sound effects
+            jumpSynth = new Tone.Synth({ oscillator: { type: "triangle" }, envelope: { attack: 0.01, decay: 0.1, sustain: 0.1, release: 0.1 } }).toDestination();
+            collectSynth = new Tone.Synth({ oscillator: { type: "sine" }, envelope: { attack: 0.01, decay: 0.2, sustain: 0.1, release: 0.2 } }).toDestination();
+            errorSynth = new Tone.Synth({ oscillator: { type: "square" }, envelope: { attack: 0.02, decay: 0.3, sustain: 0.05, release: 0.1 } }).toDestination();
+            loseLifeSynth = new Tone.Synth({ oscillator: { type: "sawtooth" }, envelope: { attack: 0.01, decay: 0.5, sustain: 0, release: 0.1 } }).toDestination();
+            gameOverSynth = new Tone.Synth({ oscillator: { type: "pwm" }, envelope: { attack: 0.1, decay: 0.8, sustain: 0, release: 0.2 } }).toDestination();
+
+            // Simple background music loop
+            const musicSynth = new Tone.Synth({ oscillator: { type: "pulse" }, volume: -18 }).toDestination(); // Quieter volume
+            const pattern = ["C4", ["E4", "G4"], "G4", null, "E4", null, ["D4", "F4"], null];
+            musicLoop = new Tone.Sequence((time, note) => {
+                if (note) {
+                    musicSynth.triggerAttackRelease(note, "8n", time);
+                }
+            }, pattern, "4n"); // Play pattern over 4 quarter notes
+
+            musicLoop.loop = true; // Ensure it loops
+            musicLoop.humanize = true; // Add slight timing variation
+            Tone.Transport.bpm.value = 100; // Set tempo
+        }
+
+        // Function to play sound effects
+        function playSound(type) {
+            if (isMuted || !audioStarted) return; // Don't play if muted or audio not started
+
+            const now = Tone.now();
+            try {
+                switch (type) {
+                    case 'jump':
+                        jumpSynth.triggerAttackRelease("C5", "16n", now); // Higher pitch jump
+                        break;
+                    case 'collect':
+                        collectSynth.triggerAttackRelease("G5", "8n", now); // Pleasant collection sound
+                        break;
+                    case 'error': // For bad words and obstacles
+                        errorSynth.triggerAttackRelease("F#3", "8n", now); // Low error sound
+                        break;
+                    case 'loseLife':
+                        loseLifeSynth.triggerAttackRelease("A2", "4n", now); // Deeper lose life sound
+                        break;
+                    case 'gameOver':
+                        gameOverSynth.triggerAttackRelease("C2", "2n", now); // Low game over sound
+                        break;
+                }
+            } catch (err) {
+                console.error("Error playing sound:", type, err);
+            }
+        }
+
+        // Call setupAudio once, but Tone.start() needs user interaction
+        setupAudio();
+
+
+        // --- Utility Functions ---
+
+        function resizeCanvas() {
+            const container = document.getElementById('gameContainer');
+            const displayWidth = container.clientWidth - 30 - 4;
+            const displayHeight = 450;
+            canvas.width = displayWidth; canvas.height = displayHeight;
+            gameWidth = canvas.width; gameHeight = canvas.height;
+            if (!gameRunning) {
+                player.y = gameHeight - floorHeight - player.height;
+                resetVisuals();
+            }
+        }
+
+        function drawRect(x, y, width, height, color) { ctx.fillStyle = color; ctx.fillRect(x, y, width, height); }
+        function drawText(text, x, y, color = '#000000', size = 18, align = 'center') { ctx.fillStyle = color; ctx.font = `${size}px 'Press Start 2P'`; ctx.textAlign = align; ctx.textBaseline = 'middle'; ctx.fillText(text, x, y); }
+
+        function drawPlayer() {
+            if (playerInvincible && Math.floor(invincibilityTimer / 10) % 2 !== 0) return;
+            const pX = player.x; const pY = player.y; const pW = player.width; const pH = player.height;
+            const headHeight = pH * 0.3; const headWidth = pW * 0.7; const bodyHeight = pH * 0.4; const bodyWidth = pW * 0.8; const legHeight = pH * 0.3; const legWidth = bodyWidth / 2 - 1;
+            const bodyY = pY + headHeight; const legsY = bodyY + bodyHeight;
+            ctx.fillStyle = player.pantsColor;
+            ctx.fillRect(pX + (pW - bodyWidth) / 2, legsY, legWidth, legHeight);
+            ctx.fillRect(pX + (pW - bodyWidth) / 2 + legWidth + 2, legsY, legWidth, legHeight);
+            ctx.fillStyle = player.shirtColor;
+            ctx.fillRect(pX + (pW - bodyWidth) / 2, bodyY, bodyWidth, bodyHeight);
+            ctx.fillStyle = player.skinColor;
+            ctx.fillRect(pX + (pW - headWidth) / 2, pY, headWidth, headHeight);
+            ctx.fillStyle = player.hairColor;
+            ctx.fillRect(pX + (pW - headWidth) / 2, pY, headWidth, headHeight * 0.4);
+            ctx.fillStyle = '#000000';
+            ctx.fillRect(pX + (pW - headWidth) / 2 + headWidth * 0.6, pY + headHeight * 0.3, 4, 4);
+        }
+
+        function drawFloor() {
+             ctx.fillStyle = '#654321'; ctx.fillRect(0, gameHeight - floorHeight, gameWidth, floorHeight);
+             ctx.fillStyle = 'rgba(0, 0, 0, 0.1)';
+             for (let i = 0; i < gameWidth; i += 30) { ctx.fillRect(i, gameHeight - floorHeight, 2, floorHeight); }
+        }
+        function drawPlatforms() {
+            platforms.forEach(p => {
+                ctx.fillStyle = '#a0522d'; ctx.fillRect(p.x, p.y, p.width, p.height);
+                ctx.fillStyle = '#228b22'; ctx.fillRect(p.x, p.y, p.width, 5);
+                if (p.hasSpike) { drawSpike(p.x + p.width / 2 - 10, p.y); }
+            });
+        }
+        function drawSpike(x, platformY) { const spikeHeight = 15; const spikeWidth = 20; ctx.fillStyle = '#71717a'; ctx.beginPath(); ctx.moveTo(x, platformY); ctx.lineTo(x + spikeWidth / 2, platformY - spikeHeight); ctx.lineTo(x + spikeWidth, platformY); ctx.closePath(); ctx.fill(); }
+        function drawObstacles() { obstacles.forEach(obs => { if (obs.type === 'block') { const groundY = obs.onFloor ? gameHeight - floorHeight : obs.platformY; drawRect(obs.x, groundY - obs.height, obs.width, obs.height, obs.color); } }); }
+        function drawBackgroundElements() { backgroundElements.forEach(el => { ctx.fillStyle = el.color; ctx.beginPath(); ctx.arc(el.x + el.width / 4, el.y + el.height / 2, el.width / 4, Math.PI, Math.PI * 2); ctx.arc(el.x + el.width * 3 / 4, el.y + el.height / 2, el.width / 4, Math.PI, Math.PI * 2); ctx.rect(el.x, el.y + el.height / 2 - el.width / 4, el.width, el.width / 4); ctx.fill(); }); }
+        function updateLivesDisplay() { let hearts = ''; for (let i = 0; i < lives; i++) { hearts += '<span class="heart">❤️</span>'; } livesBoard.innerHTML = `Lives: ${hearts}`; }
+        function showMessage(text, isInstruction = false) { messageText.innerHTML = text.replace(/\n/g, '<br>'); messageBox.style.display = 'flex'; messageButton.textContent = isInstruction ? "Got it!" : "OK"; }
+        function hideMessage() { messageBox.style.display = 'none'; }
+
+        // --- Game Logic ---
+
+        function generateLevelChunk() { /* ... (generation logic unchanged from v7) ... */
+            try {
+                const minPlatformWidth = 120, maxPlatformWidth = 280;
+                const minGapWidth = player.width + 20, maxGapWidth = player.width + 80;
+                const platformHeight = 20;
+                let currentX = lastPlatformX;
+                const lastPlatform = platforms.length > 0 ? platforms[platforms.length - 1] : null;
+                const floorLevelY = gameHeight - floorHeight;
+                let nextY = lastPlatform ? lastPlatform.y : floorLevelY - player.height - 50;
+
+                nextY += (Math.random() - 0.5) * 2 * (platformYVariance * 0.8);
+                nextY = Math.max(gameHeight * 0.3, Math.min(nextY, floorLevelY - player.height - 30));
+
+                if (Math.random() < 0.75) { // Generate upper platform
+                    const platformWidth = Math.random() * (maxPlatformWidth - minPlatformWidth) + minPlatformWidth;
+                    const spikeChance = 0.05 + (score / 5000);
+                    const hasSpike = Math.random() < spikeChance && score > 50;
+                    platforms.push({ x: currentX, y: nextY, width: platformWidth, height: platformHeight, hasSpike: hasSpike });
+
+                    const blockChance = 0.1 + (score / 4000);
+                    if (Math.random() < blockChance && !hasSpike && score > 30) {
+                        const blockHeight = Math.random() * 20 + 20;
+                        obstacles.push({ type: 'block', x: currentX + platformWidth / 2 - 10, platformY: nextY, onFloor: false, width: 20, height: blockHeight, color: '#8b5cf6' });
+                    } else if (Math.random() < 0.35) {
+                        const isGood = Math.random() < 0.65;
+                        const wordList = isGood ? goodWords : badWords;
+                        const wordText = wordList[Math.floor(Math.random() * wordList.length)];
+                        ctx.font = `18px 'Press Start 2P'`;
+                        const wordWidth = ctx.measureText(wordText).width + 15;
+                        const wordHeight = 25;
+                        words.push({ x: currentX + Math.random() * (platformWidth - wordWidth), y: nextY - wordHeight - (isGood ? 35 : 15), text: wordText, isGood: isGood, color: isGood ? '#10b981' : '#f43f5e', width: wordWidth, height: wordHeight });
+                    }
+                    currentX += platformWidth;
+
+                    if (Math.random() < 0.35) {
+                         currentX += Math.random() * (maxGapWidth - minGapWidth) + minGapWidth;
+                    }
+                } else { // Generate content on floor
+                    const advanceX = Math.random() * 200 + 100;
+                    const blockChance = 0.15 + (score / 4000);
+                    if (Math.random() < blockChance && score > 30) {
+                        const blockHeight = Math.random() * 20 + 20;
+                        obstacles.push({ type: 'block', x: currentX + advanceX / 2 - 10, onFloor: true, width: 20, height: blockHeight, color: '#8b5cf6' });
+                    } else if (Math.random() < 0.40) {
+                        const isGood = Math.random() < 0.65;
+                        const wordList = isGood ? goodWords : badWords;
+                        const wordText = wordList[Math.floor(Math.random() * wordList.length)];
+                        ctx.font = `18px 'Press Start 2P'`;
+                        const wordWidth = ctx.measureText(wordText).width + 15;
+                        const wordHeight = 25;
+                        words.push({ x: currentX + Math.random() * (advanceX - wordWidth), y: floorLevelY - wordHeight - 10, text: wordText, isGood: isGood, color: isGood ? '#10b981' : '#f43f5e', width: wordWidth, height: wordHeight });
+                    }
+                    currentX += advanceX;
+                }
+                lastPlatformX = currentX;
+
+                if (Math.random() < 0.1) {
+                    backgroundElements.push({ x: gameWidth + Math.random() * 100, y: Math.random() * (gameHeight * 0.4), width: Math.random() * 50 + 40, height: Math.random() * 20 + 20, color: 'rgba(255, 255, 255, 0.7)', speedMultiplier: Math.random() * 0.3 + 0.2 });
+                }
+                generationCheckCounter = 0;
+            } catch (error) {
+                console.error("Error during level generation:", error);
+                lastPlatformX += 100; // Attempt to recover
+            }
+        }
+
+        function updateWorld() { /* ... (unchanged from v7) ... */
+            platforms.forEach(p => p.x -= gameSpeed);
+            obstacles.forEach(o => o.x -= gameSpeed);
+            words.forEach(w => w.x -= gameSpeed);
+            backgroundElements.forEach(el => el.x -= gameSpeed * el.speedMultiplier);
+
+            platforms = platforms.filter(p => p.x + p.width > -50);
+            obstacles = obstacles.filter(o => o.x + o.width > -50);
+            words = words.filter(w => w.x + w.width > -50);
+            backgroundElements = backgroundElements.filter(el => el.x + el.width > -50);
+
+            const generationThreshold = gameWidth + 300;
+            if (lastPlatformX < generationThreshold) {
+                 generateLevelChunk();
+            } else {
+                 generationCheckCounter++;
+                 if (generationCheckCounter > 300) {
+                     console.warn("Platform generation stalled, forcing check. LastX:", lastPlatformX, "Threshold:", generationThreshold);
+                     if (platforms.length < 5) {
+                         lastPlatformX = gameWidth; generateLevelChunk();
+                     }
+                     generationCheckCounter = 0;
+                 }
+            }
+
+            if (playerInvincible) {
+                 invincibilityTimer--;
+                 if (invincibilityTimer <= 0) playerInvincible = false;
+            }
+             if (gameSpeed < maxGameSpeed) gameSpeed += 0.001;
+             if (currentSpawnRate > minSpawnRate) currentSpawnRate -= 0.05;
+        }
+
+        function handleCollisions() {
+            if (playerInvincible) return;
+            // Obstacle Blocks
+            for (let i = obstacles.length - 1; i >= 0; i--) {
+                 const obs = obstacles[i];
+                 const obsY = obs.onFloor ? gameHeight - floorHeight - obs.height : obs.platformY - obs.height;
+                 if (obs.type === 'block' && player.x < obs.x + obs.width && player.x + player.width > obs.x && player.y < obsY + obs.height && player.y + player.height > obsY) {
+                     playSound('error'); // Play sound on collision
+                     loseLife("Hit an obstacle!"); obstacles.splice(i, 1); return;
+                 }
+             }
+             // Words
+             for (let i = words.length - 1; i >= 0; i--) {
+                 const word = words[i];
+                 if (player.x < word.x + word.width && player.x + player.width > word.x && player.y < word.y + word.height && player.y + player.height > word.y) {
+                     if (word.isGood) {
+                         score += 10; updateScoreboard(); playSound('collect'); // Play sound
+                     } else {
+                         playSound('error'); // Play sound
+                         loseLife("Hit a bad word!");
+                     }
+                     words.splice(i, 1); return;
+                 }
+             }
+        }
+
+        function updatePlayer() { /* ... (physics largely unchanged from v7, added sound trigger) ... */
+            const floorLevelY = gameHeight - floorHeight;
+            player.onPlatform = false; // Reset check
+            let landedThisFrame = false;
+
+            // Check collision with upper platforms first
+            for (const p of platforms) {
+                if (player.x + player.width > p.x + 5 && player.x < p.x + p.width - 5) {
+                    if (player.velocityY >= 0 && player.y + player.height >= p.y && player.y + player.height <= p.y + p.height + player.velocityY + 1) {
+                        player.y = p.y - player.height; player.velocityY = 0; player.isJumping = false; player.onPlatform = true; landedThisFrame = true;
+                        if (p.hasSpike && !playerInvincible) {
+                            const spikeHitboxX = p.x + p.width / 2 - 10; const spikeHitboxWidth = 20;
+                            if (player.x < spikeHitboxX + spikeHitboxWidth && player.x + player.width > spikeHitboxX) {
+                                playSound('error'); // Play sound on spike hit
+                                loseLife("Hit a spike!");
+                            }
+                        }
+                        break;
+                    }
+                }
+            }
+            // Check collision with floor if not landed on upper platform
+            if (!landedThisFrame && player.y + player.height >= floorLevelY && player.velocityY >= 0) {
+                player.y = floorLevelY - player.height; player.velocityY = 0; player.isJumping = false; player.onPlatform = true; landedThisFrame = true;
+            }
+            // Apply gravity if not landed on anything this frame
+            if (!landedThisFrame) {
+                player.velocityY += gravity; player.isJumping = true;
+            }
+            player.y += player.velocityY; // Apply final vertical movement
+            if (player.y < 0) { player.y = 0; player.velocityY = 0; }
+        }
+
+         function loseLife(reason) {
+             if (playerInvincible) return;
+             playSound('loseLife'); // Play sound when life is lost
+             lives--; updateLivesDisplay();
+             playerInvincible = true; invincibilityTimer = invincibilityDuration;
+             if (lives <= 0) { gameOver(reason); }
+             else { // Respawn
+                 player.x = 50; player.y = gameHeight - floorHeight - player.height; player.velocityY = 0; player.onPlatform = true;
+             }
+         }
+
+        function updateScoreboard() { scoreBoard.textContent = `Score: ${score}`; }
+        function resetVisuals() { ctx.clearRect(0, 0, gameWidth, gameHeight); drawBackgroundElements(); drawFloor(); drawPlatforms(); drawObstacles(); if (!gameRunning) { player.y = gameHeight - floorHeight - player.height; } drawPlayer(); }
+
+        function resetGame() {
+            score = 0; lives = 3; gameSpeed = 2.5;
+            player.velocityY = 0; player.isJumping = false; player.x = 50; player.y = gameHeight - floorHeight - player.height; player.onPlatform = true;
+            playerInvincible = false; invincibilityTimer = 0;
+            platforms = []; obstacles = []; words = []; backgroundElements = [];
+            lastPlatformX = 0; currentSpawnRate = initialSpawnRate; generationCheckCounter = 0;
+
+            // Stop music on reset
+            if(audioStarted) {
+                Tone.Transport.stop();
+                musicLoop.stop(0);
+            }
+
+            generateLevelChunk();
+            while(lastPlatformX < gameWidth + 150) { generateLevelChunk(); }
+            const firstElementX = Math.min( platforms[0]?.x ?? Infinity, obstacles[0]?.x ?? Infinity, words[0]?.x ?? Infinity );
+            const shiftAmount = (firstElementX === Infinity) ? 0 : firstElementX - (player.x + 100);
+            platforms.forEach(p => p.x -= shiftAmount); obstacles.forEach(o => o.x -= shiftAmount); words.forEach(w => w.x -= shiftAmount); backgroundElements.forEach(el => el.x -= shiftAmount);
+            lastPlatformX -= shiftAmount;
+
+            updateScoreboard(); updateLivesDisplay();
+            resetVisuals();
+        }
+
+        function gameOver(reason = "Game Over!") {
+            if (!gameRunning) return;
+            gameRunning = false; cancelAnimationFrame(animationFrameId);
+            playSound('gameOver'); // Play game over sound
+            // Stop music
+             if(audioStarted) {
+                Tone.Transport.stop();
+                musicLoop.stop(0);
+            }
+            showMessage(`${reason}\nFinal Score: ${score}`);
+            restartButton.style.display = 'inline-block';
+            startButton.style.display = 'none';
+        }
+
+        // --- Game Loop ---
+        function gameLoop() {
+            if (!gameRunning) { if (messageBox.style.display === 'none') cancelAnimationFrame(animationFrameId); return; }
+            ctx.clearRect(0, 0, gameWidth, gameHeight);
+            updateWorld(); updatePlayer(); handleCollisions();
+            drawBackgroundElements(); drawFloor(); drawPlatforms(); drawObstacles();
+            words.forEach(word => drawText(word.text, word.x + word.width / 2, word.y + word.height / 2, word.color));
+            drawPlayer();
+            animationFrameId = requestAnimationFrame(gameLoop);
+        }
+
+        // --- Event Listeners ---
+        function handleJump(event) {
+             // console.log(`Event Type: ${event.type}, Key Code: ${event.code}`); // Debug log 1
+             // console.log(`State: Running=${gameRunning}, OnPlatform=${player.onPlatform}, Jumping=${player.isJumping}`); // Debug log 2
+             if (gameRunning && player.onPlatform && !player.isJumping) {
+                 if ((event.type === 'keydown' && (event.code === 'Space' || event.code === 'ArrowUp')) || event.type === 'pointerdown') {
+                     // console.log("Jump conditions met! Applying jump force."); // Debug log 3
+                     event.preventDefault();
+                     playSound('jump'); // Play jump sound
+                     player.velocityY = jumpForce;
+                     player.isJumping = true;
+                     player.onPlatform = false;
+                 }
+             } else { /* Debug log 4 (optional) */
+                  // if (!gameRunning) console.log("Jump fail: Game not running");
+                  // if (!player.onPlatform) console.log("Jump fail: Not on platform");
+                  // if (player.isJumping) console.log("Jump fail: Already jumping");
+             }
+        }
+
+        window.addEventListener('keydown', handleJump);
+        canvas.addEventListener('pointerdown', handleJump);
+
+        startButton.addEventListener('click', async () => { // Make async for Tone.start()
+            if (gameRunning) return;
+
+            // Start Tone.js context on first user interaction
+            if (!audioStarted) {
+                try {
+                    await Tone.start();
+                    audioStarted = true;
+                    console.log("Audio context started successfully.");
+                    // Start music transport only after context is ready
+                    Tone.Transport.start();
+                    musicLoop.start(0); // Start the music loop immediately
+                } catch (e) {
+                    console.error("Error starting Tone.js:", e);
+                    // Handle error - maybe disable audio?
+                }
+            } else {
+                 // If audio context already started, just ensure transport is running
+                 if (Tone.Transport.state !== "started") {
+                      Tone.Transport.start();
+                 }
+                 if (musicLoop.state !== "started") {
+                      musicLoop.start(0); // Restart loop if stopped
+                 }
+            }
+
+
+            hideMessage(); resetGame(); gameRunning = true;
+            startButton.style.display = 'none'; restartButton.style.display = 'none';
+            animationFrameId = requestAnimationFrame(gameLoop);
+        });
+
+        restartButton.addEventListener('click', async () => { // Make async for Tone.start()
+             // Start Tone.js context if it wasn't started (e.g., page reload)
+            if (!audioStarted) {
+                try {
+                    await Tone.start();
+                    audioStarted = true;
+                    console.log("Audio context started successfully on restart.");
+                } catch (e) {
+                    console.error("Error starting Tone.js on restart:", e);
+                }
+            }
+             // Ensure transport and loop start on restart if audio is ready
+             if(audioStarted) {
+                 Tone.Transport.start(); // Ensure transport is running
+                 musicLoop.start(0); // Restart music loop
+             }
+
+            hideMessage(); resetGame(); gameRunning = true;
+            restartButton.style.display = 'none';
+            animationFrameId = requestAnimationFrame(gameLoop);
+        });
+
+        muteButton.addEventListener('click', () => {
+            isMuted = !isMuted;
+            Tone.Destination.mute = isMuted; // Mute/unmute all Tone.js sound
+            muteButton.textContent = isMuted ? "Unmute" : "Mute";
+            // Add/remove muted class for styling
+             muteButton.classList.toggle('muted', isMuted);
+            console.log("Muted:", isMuted);
+        });
+
+
+        messageButton.addEventListener('click', () => { hideMessage(); });
+        window.addEventListener('resize', resizeCanvas);
+
+         // --- Initialization ---
+         function showInstructions() {
+             const instructions = "Word Runner Adventures!\n\n" +
+                                "Run on the floor and jump on platforms.\n" +
+                                "Collect GREEN words (Correct).\n" +
+                                "Avoid RED words (Misspelled).\n" +
+                                "Jump over obstacles (Blocks <span style='color:#8b5cf6;'>■</span>, Spikes <span style='color:#71717a;'>▲</span>)!\n\n" +
+                                "You have 3 Lives ❤️❤️❤️\n" +
+                                "Controls: JUMP with Spacebar, Arrow Up, or Click.\n\n" +
+                                "Press 'Got it!' then 'Start Game'.";
+             showMessage(instructions, true);
+         }
+
+        window.onload = () => {
+            resizeCanvas();
+            generateLevelChunk();
+            while(lastPlatformX < gameWidth + 150) { generateLevelChunk(); }
+            const firstElementX = Math.min( platforms[0]?.x ?? Infinity, obstacles[0]?.x ?? Infinity, words[0]?.x ?? Infinity );
+            const shiftAmount = (firstElementX === Infinity) ? 0 : firstElementX - (player.x + 100);
+            platforms.forEach(p => p.x -= shiftAmount); obstacles.forEach(o => o.x -= shiftAmount); words.forEach(w => w.x -= shiftAmount);
+            lastPlatformX -= shiftAmount;
+            resetVisuals();
+            showInstructions();
+        };
+
+    </script>
+
+</body>
+</html>
+

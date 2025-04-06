@@ -1,0 +1,490 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Name the Fruit!</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.js"></script>
+    <style>
+        /* Apply game font */
+        body, button, input, .game-font {
+            font-family: 'Press Start 2P', cursive;
+        }
+        /* Basic blackboard style */
+        .blackboard {
+            background-color: #386641; /* Dark green */
+            color: #f2e8cf; /* Chalk white */
+            border: 10px solid #a44a3f; /* Wood frame */
+            box-shadow: 5px 5px 15px rgba(0,0,0,0.5);
+            border-radius: 8px; /* Added slight rounding */
+        }
+        /* Style for letter placeholders */
+        .letter-box {
+            display: inline-block;
+            width: 2.5rem; /* Adjust as needed */
+            height: 3rem; /* Adjust as needed */
+            line-height: 3rem; /* Vertically center */
+            text-align: center;
+            border: 2px solid #f2e8cf;
+            margin: 0 0.2rem;
+            font-size: 1.5rem; /* Adjust as needed */
+            background-color: #6a994e; /* Slightly lighter green */
+            border-radius: 0.25rem; /* Small rounding */
+            vertical-align: middle; /* Align with text */
+            text-transform: uppercase; /* Ensure letters are uppercase */
+        }
+        .letter-box.hidden {
+            background-color: #4a7c59; /* Darker for hidden */
+        }
+        /* Simple button styling (Applied to buttons and the Home link) */
+        .game-button {
+            display: inline-block; /* Ensure link behaves like button for margin/padding */
+            background-color: #fca311; /* Orange */
+            color: #14213d !important; /* Dark blue text - !important needed for link */
+            border: 3px solid #14213d;
+            padding: 0.5rem 1rem;
+            border-radius: 8px;
+            cursor: pointer;
+            text-transform: uppercase;
+            text-decoration: none; /* Remove underline from link */
+            transition: all 0.2s ease;
+            box-shadow: 3px 3px 0px #14213d; /* Simple shadow */
+        }
+        .game-button:hover {
+            background-color: #e85d04; /* Darker orange */
+            transform: translate(1px, 1px);
+            box-shadow: 2px 2px 0px #14213d;
+        }
+        .game-button:active {
+            transform: translate(3px, 3px);
+            box-shadow: none;
+        }
+        /* Input field styling to look like chalk input */
+        .chalk-input {
+            background-color: transparent;
+            border: none;
+            border-bottom: 2px dashed #f2e8cf;
+            color: #f2e8cf;
+            text-align: center;
+            outline: none;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+        }
+        /* Message Box Styling */
+        #message-box {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background-color: rgba(20, 33, 61, 0.9); /* Dark blue semi-transparent */
+            color: #fca311; /* Orange text */
+            padding: 2rem;
+            border-radius: 15px;
+            border: 5px solid #fca311;
+            text-align: center;
+            z-index: 100;
+            box-shadow: 0 0 20px rgba(0,0,0,0.7);
+            min-width: 300px;
+        }
+         /* Animation for shaking effect */
+        @keyframes shake {
+          0%, 100% { transform: translateX(0); }
+          10%, 30%, 50%, 70%, 90% { transform: translateX(-5px); }
+          20%, 40%, 60%, 80% { transform: translateX(5px); }
+        }
+        .animate-shake {
+          animation: shake 0.5s ease-in-out;
+        }
+    </style>
+</head>
+<body class="bg-gradient-to-b from-sky-400 to-emerald-500 min-h-screen flex items-center justify-center p-4 game-font">
+
+    <div id="game-container" class="w-full max-w-3xl mx-auto text-center">
+
+        <h1 class="text-4xl text-white mb-4" style="text-shadow: 2px 2px 4px #000;">Name the Fruit!</h1>
+
+        <a href="../../index.html" class="game-button mb-6 text-sm">Home</a>
+        <div id="game-area" class="bg-yellow-100 p-6 rounded-lg shadow-xl border-4 border-yellow-600 hidden">
+
+            <div class="flex justify-between items-center mb-4 text-lg text-stone-700">
+                <div id="level-display">Level: 2</div>
+                <div id="tries-display">Tries Left: 3 ❤️❤️❤️</div>
+            </div>
+
+            <div class="mb-6 h-48 flex items-center justify-center bg-white rounded-md shadow-inner border border-gray-300">
+                 <img id="fruit-image" src="https://placehold.co/200x150/e0e0e0/777?text=Fruit+Image" alt="Fruit to guess" class="max-h-full max-w-full object-contain rounded">
+            </div>
+
+            <div class="blackboard p-6 rounded-lg mb-6">
+                <div id="word-display" class="mb-4 h-12 flex justify-center items-center">
+                    </div>
+                 <div class="flex flex-col sm:flex-row items-center justify-center space-y-4 sm:space-y-0 sm:space-x-4">
+                    <input type="text" id="guess-input" class="chalk-input text-2xl p-2 w-full sm:w-auto flex-grow" placeholder="Type the name..." maxlength="15" autocomplete="off">
+                    <button id="check-button" class="game-button text-xl">Check</button>
+                </div>
+            </div>
+
+             <div id="feedback-area" class="h-10 text-xl text-red-700 font-bold mt-4">
+                </div>
+
+        </div>
+
+        <button id="start-button" class="game-button text-2xl mt-8">Start Game</button>
+
+    </div>
+
+    <div id="message-box" class="hidden">
+        <p id="message-text" class="text-xl mb-4">Message goes here</p>
+        <button id="message-button" class="game-button">OK</button>
+    </div>
+
+    <script>
+        // --- Game Configuration ---
+        const MAX_TRIES = 3;
+        const HINT_AFTER_TRY = 1; // Give hint after 1 wrong try
+
+        // Fruit data including level and image path (replace placeholders with your actual paths)
+        const fruitData = [
+            // Level 1 (4 Letters) - Will be skipped now
+            { name: "FIG", level: 1, image: "images/fig.jpg" },
+            { name: "KIWI", level: 1, image: "images/kiwi.png" },
+            { name: "LIME", level: 1, image: "images/lime.jpg" },
+            { name: "DATE", level: 1, image: "images/date.jpg" },
+            { name: "PLUM", level: 1, image: "images/plum.jpg" },
+            // Level 2 (5 Letters)
+            { name: "APPLE", level: 2, image: "images/apricot.jpg" },
+            { name: "GRAPE", level: 2, image: "images/apricot.jpg" },
+            { name: "LEMON", level: 2, image: "images/apricot.jpg" },
+            { name: "PEACH", level: 2, image: "images/apricot.jpg" },
+            { name: "PEAR", level: 2, image: "images/apricot.jpg" },
+            // Level 3 (6 Letters)
+            { name: "BANANA", level: 3, image: "images/banana.png" },
+            { name: "MANGO", level: 3, image: "images/mango.jpg" },
+            { name: "PAPAYA", level: 3, image: "images/papaya.jpg" },
+            { name: "CHERRY", level: 3, image: "images/cherry.png" },
+            { name: "MELON", level: 3, image: "images/melon.jpg" },
+            // Level 4 (7 Letters - adjusted notes)
+            { name: "ORANGE", level: 4, image: "images/orange.jpg" }, // 6 letters
+            { name: "APRICOT", level: 4, image: "images/apricot.jpg" }, // 7 letters
+            { name: "COCONUT", level: 4, image: "images/coconut.jpg" }, // 7 letters
+            { name: "AVOCADO", level: 4, image: "images/avocado.jpg" }, // 7 letters
+            { name: "TOMATO", level: 4, image: "images/tomato.jpg" }, // 6 letters
+            // Level 5 (Mixed/Rare)
+            { name: "GUAVA", level: 5, image: "images/guava.jpg" }, // 5
+            { name: "LYCHEE", level: 5, image: "images/lychee.png" }, // 6
+            { name: "DURIAN", level: 5, image: "images/durian.jpg" }, // 6
+            { name: "QUINCE", level: 5, image: "images/quince.jpg" }, // 6
+            { name: "BERRY", level: 5, image: "images/berry.jpg" } // 5 (Example reuse/mix)
+        ];
+
+        // --- Audio Synths (Tone.js) ---
+        let synth, synthPoly; // Declare them here
+        // Initializes Tone.js audio components after user interaction
+        function initializeAudio() {
+             if (!synth) synth = new Tone.Synth().toDestination();
+             if (!synthPoly) synthPoly = new Tone.PolySynth(Tone.Synth).toDestination();
+             synth.volume.value = -6; // Adjust volume as needed
+             synthPoly.volume.value = -6;
+        }
+
+        // Function to play sounds based on type ('correct', 'incorrect', 'hint', 'reveal', 'level_up')
+        function playSound(type) {
+            if (!synth || !synthPoly) {
+                console.warn("Audio not initialized yet. Click 'Start Game' first.");
+                return; // Don't try to play if not ready
+            }
+             try {
+                 if (type === 'correct') {
+                     synthPoly.triggerAttackRelease(["C4", "E4", "G4"], "8n", Tone.now());
+                     const noiseSynth = new Tone.NoiseSynth({
+                         noise: { type: "white" },
+                         envelope: { attack: 0.001, decay: 0.1, sustain: 0, release: 0.1 }
+                     }).toDestination();
+                     noiseSynth.triggerAttackRelease("16n", Tone.now() + 0.05);
+                     setTimeout(() => noiseSynth.dispose(), 200); // Clean up temporary synth
+                 } else if (type === 'incorrect') {
+                     synth.triggerAttackRelease("C3", "8n", Tone.now());
+                 } else if (type === 'hint') {
+                     synth.triggerAttackRelease("E5", "16n", Tone.now());
+                 } else if (type === 'reveal') {
+                     synth.triggerAttackRelease("A3", "8n", Tone.now());
+                 } else if (type === 'level_up') {
+                      synthPoly.triggerAttackRelease(["C5", "E5", "G5", "C6"], "4n", Tone.now());
+                 }
+             } catch (error) {
+                 console.error("Tone.js error:", error);
+             }
+        }
+
+        // --- DOM Elements ---
+        const gameContainer = document.getElementById('game-container');
+        const gameArea = document.getElementById('game-area');
+        const levelDisplay = document.getElementById('level-display');
+        const triesDisplay = document.getElementById('tries-display');
+        const fruitImage = document.getElementById('fruit-image');
+        const wordDisplay = document.getElementById('word-display');
+        const guessInput = document.getElementById('guess-input');
+        const checkButton = document.getElementById('check-button');
+        const feedbackArea = document.getElementById('feedback-area');
+        const startButton = document.getElementById('start-button');
+        const messageBox = document.getElementById('message-box');
+        const messageText = document.getElementById('message-text');
+        let messageButton = document.getElementById('message-button'); // Use let for reassignment
+
+        // --- Game State ---
+        let currentLevel = 2; // Start at level 2
+        let wordsInLevel = [];
+        let currentWordIndex = 0;
+        let currentWord = null;
+        let displayedLetters = []; // Array of letters or '_'
+        let triesLeft = MAX_TRIES;
+        let gameActive = false;
+        let hintGiven = false;
+
+        // --- Game Functions ---
+
+        // Shows a message in the modal pop-up
+        function showMessage(text, buttonText = "OK", callback = null) {
+            messageText.textContent = text;
+            messageButton = document.getElementById('message-button'); // Re-select in case it was replaced
+            messageButton.textContent = buttonText;
+            messageBox.classList.remove('hidden');
+
+            const newButton = messageButton.cloneNode(true); // Clone to remove old listeners
+            messageButton.parentNode.replaceChild(newButton, messageButton);
+
+            newButton.onclick = () => { // Add listener to the new button
+                messageBox.classList.add('hidden');
+                if (callback) {
+                    setTimeout(callback, 50); // Slight delay for smoother transitions
+                }
+            };
+            messageButton = newButton; // Update reference
+        }
+
+        // Updates the display showing remaining tries (hearts)
+        function updateTriesDisplay() {
+            let hearts = '❤️'.repeat(triesLeft) + '🖤'.repeat(MAX_TRIES - triesLeft);
+            triesDisplay.textContent = `Tries Left: ${triesLeft} ${hearts}`;
+        }
+
+        // Creates the word display with some letters hidden ('_')
+        function generateDisplayedWord(word) {
+            const wordArr = word.toUpperCase().split('');
+            displayedLetters = wordArr.map(() => '_');
+            const lettersToReveal = Math.max(1, Math.floor(wordArr.length * 0.35));
+            let revealedCount = 0;
+            const indices = wordArr.map((_, i) => i);
+
+            // Fisher-Yates shuffle for indices
+            for (let i = indices.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [indices[i], indices[j]] = [indices[j], indices[i]];
+            }
+
+            // Reveal letters at shuffled indices
+            for(let i = 0; i < indices.length && revealedCount < lettersToReveal; i++) {
+                 const index = indices[i];
+                 if (displayedLetters[index] === '_') {
+                     displayedLetters[index] = wordArr[index];
+                     revealedCount++;
+                 }
+            }
+            renderWordDisplay(); // Update the visual display
+        }
+
+        // Renders the letter boxes based on the displayedLetters array
+        function renderWordDisplay() {
+            wordDisplay.innerHTML = ''; // Clear previous boxes
+            displayedLetters.forEach(letter => {
+                const letterBox = document.createElement('div');
+                letterBox.classList.add('letter-box', 'game-font');
+                if (letter === '_') {
+                    letterBox.classList.add('hidden');
+                    letterBox.textContent = '';
+                } else {
+                    letterBox.textContent = letter;
+                }
+                wordDisplay.appendChild(letterBox);
+            });
+        }
+
+        // Loads the next word in the current level or triggers level completion
+        function loadWord() {
+            if (currentWordIndex >= wordsInLevel.length) {
+                playSound('level_up');
+                showMessage(`Level ${currentLevel} Complete!`, "Next Level", () => {
+                    currentLevel++;
+                    loadLevel();
+                });
+                return;
+            }
+
+            currentWord = wordsInLevel[currentWordIndex];
+            triesLeft = MAX_TRIES;
+            hintGiven = false;
+            feedbackArea.textContent = '';
+            guessInput.value = '';
+            guessInput.disabled = false;
+            checkButton.disabled = false;
+
+            fruitImage.src = currentWord.image;
+            fruitImage.alt = `Image of ${currentWord.name}`;
+            fruitImage.onerror = () => { // Handle image loading errors
+                console.error(`Failed to load image: ${currentWord.image}`);
+                fruitImage.src = `https://placehold.co/200x150/cccccc/ffffff?text=Error+Loading+${currentWord.name}`;
+                fruitImage.alt = `Error loading image for ${currentWord.name}`;
+            }
+
+            generateDisplayedWord(currentWord.name);
+            updateTriesDisplay();
+            levelDisplay.textContent = `Level: ${currentLevel}`;
+
+            setTimeout(() => guessInput.focus(), 100); // Focus input field
+        }
+
+        // Loads data for the current level or ends the game
+        function loadLevel() {
+            wordsInLevel = fruitData.filter(fruit => fruit.level === currentLevel);
+
+            if (wordsInLevel.length === 0) {
+                 const maxLevel = Math.max(...fruitData.map(f => f.level));
+                 if (currentLevel > maxLevel) {
+                     showMessage("Wow! You've named all the fruits!", "Play Again?", initGame);
+                 } else {
+                     console.error(`No words found for level ${currentLevel}. Check fruitData.`);
+                     showMessage("Oops! We ran out of fruits for this level.", "Restart Game", initGame);
+                 }
+                gameActive = false;
+                startButton.classList.remove('hidden');
+                gameArea.classList.add('hidden');
+                return;
+            }
+
+            wordsInLevel.sort(() => Math.random() - 0.5); // Shuffle words
+            currentWordIndex = 0;
+            levelDisplay.textContent = `Level: ${currentLevel}`; // Update display
+            loadWord(); // Load the first word
+        }
+
+        // Reveals one hidden letter as a hint
+        function giveHint() {
+            const hiddenIndices = [];
+            displayedLetters.forEach((letter, index) => {
+                if (letter === '_') {
+                    hiddenIndices.push(index);
+                }
+            });
+
+            if (hiddenIndices.length > 0) {
+                const randomIndex = hiddenIndices[Math.floor(Math.random() * hiddenIndices.length)];
+                displayedLetters[randomIndex] = currentWord.name[randomIndex];
+                renderWordDisplay();
+                feedbackArea.textContent = "Hint: A letter revealed!";
+                playSound('hint');
+                hintGiven = true;
+            } else {
+                 feedbackArea.textContent = "No more letters to reveal!";
+            }
+        }
+
+        // Checks the player's guess against the correct answer
+        function checkAnswer() {
+            if (!gameActive || guessInput.disabled) return;
+
+            const guess = guessInput.value.trim().toUpperCase();
+            if (!guess) return; // Ignore empty input
+
+            // Correct Answer
+            if (guess === currentWord.name) {
+                feedbackArea.textContent = "Correct! Well Done!";
+                feedbackArea.classList.remove('text-red-700');
+                feedbackArea.classList.add('text-green-700');
+                playSound('correct');
+                guessInput.disabled = true;
+                checkButton.disabled = true;
+                displayedLetters = currentWord.name.split('');
+                renderWordDisplay();
+
+                setTimeout(() => {
+                    currentWordIndex++;
+                    loadWord();
+                    feedbackArea.textContent = ''; // Clear feedback for next round
+                    feedbackArea.classList.remove('text-green-700');
+                    feedbackArea.classList.add('text-red-700'); // Reset color
+                }, 1500);
+
+            // Incorrect Answer
+            } else {
+                triesLeft--;
+                updateTriesDisplay();
+                playSound('incorrect');
+
+                if (triesLeft > 0) { // Still has tries
+                    feedbackArea.textContent = `Not quite! Try again. (${guess})`;
+                    if (MAX_TRIES - triesLeft >= HINT_AFTER_TRY && !hintGiven) {
+                         giveHint(); // Give hint automatically
+                    } else {
+                        wordDisplay.classList.add('animate-shake'); // Shake effect
+                        setTimeout(() => wordDisplay.classList.remove('animate-shake'), 500);
+                    }
+                } else { // Out of tries
+                    feedbackArea.textContent = `Out of tries! The word was: ${currentWord.name}`;
+                    playSound('reveal');
+                    guessInput.disabled = true;
+                    checkButton.disabled = true;
+                    displayedLetters = currentWord.name.split(''); // Show correct word
+                    renderWordDisplay();
+
+                    setTimeout(() => { // Move to next word after delay
+                        currentWordIndex++;
+                        loadWord();
+                    }, 2500);
+                }
+                 guessInput.value = ''; // Clear input field
+                 setTimeout(() => guessInput.focus(), 50); // Refocus input
+            }
+        }
+
+        // Initializes or restarts the game
+        function initGame() {
+            initializeAudio(); // Initialize audio on start
+            currentLevel = 2; // Start/Restart at level 2
+            gameActive = true;
+            startButton.classList.add('hidden');
+            gameArea.classList.remove('hidden');
+            messageBox.classList.add('hidden');
+            loadLevel(); // Load the starting level
+        }
+
+        // --- Event Listeners ---
+        startButton.addEventListener('click', initGame);
+        checkButton.addEventListener('click', checkAnswer);
+        guessInput.addEventListener('keypress', (event) => {
+            if (event.key === 'Enter') {
+                 event.preventDefault();
+                 checkAnswer();
+            }
+        });
+
+        // Add shake animation style dynamically
+        const styleSheet = document.createElement("style");
+        styleSheet.type = "text/css";
+        styleSheet.innerText = `
+            @keyframes shake {
+              0%, 100% { transform: translateX(0); }
+              10%, 30%, 50%, 70%, 90% { transform: translateX(-5px); }
+              20%, 40%, 60%, 80% { transform: translateX(5px); }
+            }
+            .animate-shake {
+              animation: shake 0.5s ease-in-out;
+            }
+        `;
+        document.head.appendChild(styleSheet);
+
+    </script>
+
+</body>
+</html>

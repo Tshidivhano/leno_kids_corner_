@@ -1,0 +1,395 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Spelling Spaceship - New Music & Home</title>
+    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.7.77/Tone.js"></script>
+    <style>
+        /* Basic reset and body styling */
+        body {
+            margin: 0;
+            padding: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            font-family: 'Press Start 2P', cursive; /* Arcade font */
+            color: #E0E0E0; /* Lighter base color */
+            overflow: hidden; /* Prevent scrollbars */
+            background: linear-gradient(to bottom, #0f0c29, #302b63, #24243e); /* Darker space gradient */
+             background-image:
+                radial-gradient(white 1px, transparent 1px),
+                radial-gradient(white 1px, transparent 1px),
+                linear-gradient(to bottom, #0f0c29, #302b63, #24243e);
+            background-size: 40px 40px, 70px 70px, 100% 100%;
+            background-position: 0 0, 35px 35px, 0 0;
+            animation: move-stars 60s linear infinite;
+        }
+
+        @keyframes move-stars {
+            from {background-position: 0 0, 35px 35px, 0 0;}
+            to {background-position: -100px 100px, -135px 135px, 0 0;}
+        }
+
+        /* Main game container - Enhanced */
+        #game-container {
+            position: relative;
+            width: 90vw;
+            max-width: 800px;
+            height: 85vh;
+            max-height: 650px;
+            border: 4px solid #8ec5fc;
+            border-radius: 20px;
+            overflow: hidden;
+            background-color: rgba(36, 36, 62, 0.85);
+            box-shadow: 0 0 30px rgba(142, 197, 252, 0.7), inset 0 0 15px rgba(15, 12, 41, 0.9);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 20px;
+            box-sizing: border-box;
+        }
+
+        /* Game area - Enhanced */
+        #game-area {
+            position: relative;
+            width: 100%;
+            height: 75%;
+            border-bottom: 3px dashed rgba(142, 197, 252, 0.6);
+            margin-bottom: 15px;
+            background-image: radial-gradient(ellipse at 70% 30%, rgba(224, 195, 252, 0.15) 0%, rgba(142, 197, 252, 0.08) 40%, transparent 70%);
+            border-radius: 10px;
+        }
+
+        /* Player spaceship styling - UNCHANGED */
+        #spaceship {
+            position: absolute;
+            bottom: 10px;
+            width: 40px;
+            height: 40px;
+            font-size: 30px;
+            text-align: center;
+            line-height: 40px;
+            user-select: none;
+            z-index: 10;
+        }
+
+        /* Letter styling - UNCHANGED */
+        .letter {
+            position: absolute;
+            font-size: 20px;
+            font-weight: bold;
+            color: #FFD700;
+            background-color: rgba(0, 0, 0, 0.6);
+            padding: 4px 6px;
+            border-radius: 50%;
+            user-select: none;
+            z-index: 5;
+            text-shadow: 0 0 3px #fff;
+            transition: transform 0.3s ease-out, top 0.3s ease-out, left 0.3s ease-out;
+        }
+
+        /* UI elements area - Enhanced */
+        #ui-area {
+            width: 100%;
+            height: 25%;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-around;
+            align-items: center;
+            text-align: center;
+            padding-top: 10px;
+            gap: 5px;
+        }
+
+        /* Common style for UI panels - Enhanced */
+        .ui-panel {
+            background: linear-gradient(145deg, rgba(48, 43, 99, 0.8), rgba(15, 12, 41, 0.9));
+            padding: 8px 15px;
+            border-radius: 12px;
+            width: 90%;
+            border: 2px solid rgba(142, 197, 252, 0.6);
+            box-shadow: inset 0 0 8px rgba(15, 12, 41, 0.8), 0 2px 4px rgba(0,0,0,0.3);
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.7);
+        }
+
+        /* Clue display styling - Enhanced */
+        #clue-display { font-size: 0.85em; min-height: 1.5em; color: #e0c3fc; }
+         /* Word progress display styling - Enhanced */
+        #word-display { font-size: 1.4em; letter-spacing: 8px; color: #ffffff; }
+        /* Score display styling - Enhanced */
+        #score-display { font-size: 1.1em; color: #8ec5fc; }
+
+        /* Feedback display styling - Enhanced */
+        #feedback-display {
+             font-size: 0.9em; min-height: 1em; margin-top: 0; padding: 6px 10px;
+             border-radius: 8px; width: auto; max-width: 85%;
+             text-shadow: 1px 1px 1px rgba(0,0,0,0.7);
+             transition: background-color 0.3s ease, color 0.3s ease, opacity 0.3s ease;
+             opacity: 0; background-color: rgba(0,0,0,0.5);
+        }
+        #feedback-display.show { opacity: 1; }
+        #feedback-display.success { background-color: rgba(0, 150, 80, 0.8); color: #fff; }
+        #feedback-display.error { background-color: rgba(200, 50, 50, 0.8); color: #fff; }
+        #feedback-display.info { background-color: rgba(60, 120, 180, 0.8); color: #fff; }
+
+        /* Start button styling - Enhanced */
+        #start-button {
+            font-family: 'Press Start 2P', cursive; font-size: 1.3em; padding: 18px 35px;
+            cursor: pointer; border: 3px outset #a881d6; border-radius: 15px;
+            background: linear-gradient(145deg, #4CAF50, #8BC34A); color: #ffffff;
+            text-shadow: 1px 1px 3px rgba(0,0,0,0.6);
+            box-shadow: 0 6px 12px rgba(0, 0, 0, 0.4), inset 0 -4px 4px rgba(0,0,0,0.25);
+            transition: all 0.15s ease; position: absolute; top: 50%; left: 50%;
+            transform: translate(-50%, -50%); z-index: 100;
+        }
+        #start-button:hover {
+            background: linear-gradient(145deg, #66BB6A, #9CCC65);
+            box-shadow: 0 8px 16px rgba(0, 0, 0, 0.5), inset 0 -4px 5px rgba(0,0,0,0.3);
+            transform: translate(-50%, -51%); border-color: #e0c3fc;
+        }
+        #start-button:active {
+             background: linear-gradient(145deg, #388E3C, #689F38);
+             box-shadow: 0 4px 8px rgba(0, 0, 0, 0.4), inset 0 3px 3px rgba(0,0,0,0.2);
+             transform: translate(-50%, -49.5%); border-style: inset;
+        }
+
+        /* Home Button Styling */
+        #home-button {
+            position: absolute;
+            top: 15px; /* Position in top-left */
+            left: 15px;
+            z-index: 110; /* Above other elements */
+            padding: 8px 12px;
+            font-size: 0.8em; /* Smaller font */
+            color: #ffffff;
+            background: linear-gradient(145deg, #607D8B, #455A64); /* Greyish blue */
+            border: 2px solid #B0BEC5;
+            border-radius: 10px;
+            text-decoration: none;
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.5);
+            box-shadow: 0 3px 6px rgba(0,0,0,0.3);
+            transition: all 0.2s ease;
+        }
+        #home-button:hover {
+            background: linear-gradient(145deg, #78909C, #546E7A);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.4);
+            transform: translateY(-1px); /* Slight lift */
+        }
+         #home-button:active {
+             background: linear-gradient(145deg, #455A64, #607D8B);
+             box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+             transform: translateY(0px);
+         }
+
+        /* Hide game elements initially */
+        .hidden { display: none; }
+
+    </style>
+</head>
+<body>
+     <div id="game-container">
+        <a href="../../index.html" id="home-button">🏠 Home</a>
+
+        <button id="start-button">Play Now</button>
+
+        <div id="game-area" class="hidden">
+             <div id="spaceship">🚀</div>
+            </div>
+
+        <div id="ui-area" class="hidden">
+             <div id="clue-display" class="ui-panel">Clue will appear here...</div>
+            <div id="word-display" class="ui-panel">WORD: ______</div>
+            <div id="score-display" class="ui-panel">Score: 0</div>
+             <div id="feedback-display">Use arrow keys or WASD!</div>
+        </div>
+    </div>
+
+    <script>
+        // --- DOM Elements ---
+        const gameContainer = document.getElementById('game-container');
+        const gameArea = document.getElementById('game-area');
+        const spaceship = document.getElementById('spaceship');
+        const scoreDisplay = document.getElementById('score-display');
+        const wordDisplay = document.getElementById('word-display');
+        const clueDisplay = document.getElementById('clue-display');
+        const feedbackDisplay = document.getElementById('feedback-display');
+        const startButton = document.getElementById('start-button');
+        const uiArea = document.getElementById('ui-area');
+        // No JS needed for homeButton functionality (it's a link)
+
+        // --- Game Configuration ---
+        const spaceshipSpeed = 15;
+        const letterSpawnPadding = 30;
+        const wordData = [ // Primary school word list
+            { word: "CAT", clue: "A furry pet that says meow" }, { word: "DOG", clue: "A pet that barks, man's best friend" },
+            { word: "SUN", clue: "Bright star we see in the day" }, { word: "MOON", clue: "Shines in the sky at night" },
+            { word: "BALL", clue: "Round toy for throwing or kicking" }, { word: "TREE", clue: "Tall plant with leaves and wood" },
+            { word: "BOOK", clue: "You read this, it has pages" }, { word: "FISH", clue: "Swims in water, has fins" },
+            { word: "BLUE", clue: "The color of the sky on a clear day" }, { word: "RED", clue: "The color of a strawberry or firetruck" },
+            { word: "RUN", clue: "To move fast using your legs" }, { word: "JUMP", clue: "Push off the ground with your feet" },
+            { word: "CAR", clue: "You ride in this on the road" }, { word: "BED", clue: "You sleep in this at night" },
+            { word: "HAT", clue: "You wear this on your head" }, { word: "PIG", clue: "A farm animal that says oink" },
+            { word: "ANT", clue: "A very small insect" }, { word: "FLY", clue: "To move through the air like a bird" },
+            { word: "SIT", clue: "To rest your bottom on a chair" }
+        ];
+
+        // --- Game State Variables ---
+        let score = 0; let currentWord = ""; let currentClue = "";
+        let lettersToCollect = []; let collectedLetters = 0;
+        let lettersOnScreen = []; let gameActive = false; let animationFrameId = null;
+
+        // --- Audio Setup (Tone.js) ---
+        let audioInitialized = false; let synth = null; let musicLoop = null;
+
+        function initializeAudio() {
+            if (audioInitialized || typeof Tone === 'undefined') return;
+            synth = new Tone.Synth({
+                oscillator: { type: 'sine' }, // Changed oscillator slightly
+                envelope: { attack: 0.01, decay: 0.1, sustain: 0.2, release: 0.3 } // Slightly longer release
+            }).toDestination();
+
+            // --- NEW MELODY ---
+            // Simple ascending/descending arpeggio-like pattern
+            const melody = ["G3", null, "C4", null, "E4", null, "G4", null, "E4", null, "C4", null];
+            musicLoop = new Tone.Sequence((time, note) => {
+                if (note) { synth.triggerAttackRelease(note, "8n", time); }
+            }, melody, "8n"); // Play notes as 8th notes, sequence loops every 12*8th notes
+
+            musicLoop.loop = true;
+            Tone.Transport.bpm.value = 100; // Slightly faster tempo
+            audioInitialized = true;
+            console.log("Audio Initialized with new melody");
+        }
+
+        function playSound(note, duration = "16n") {
+             if (!audioInitialized || !synth) return;
+             try { synth.triggerAttackRelease(note, duration); }
+             catch (error) { console.error("Error playing sound:", error); }
+        }
+
+        function controlMusic(play) {
+            if (!audioInitialized || !musicLoop) return;
+            if (play && Tone.Transport.state !== 'started') {
+                 try { Tone.Transport.start(); musicLoop.start(0); console.log("Music Started"); }
+                 catch(error) { console.error("Error starting music:", error); }
+            } else if (!play && Tone.Transport.state === 'started') {
+                 try { musicLoop.stop(); Tone.Transport.stop(); console.log("Music Stopped"); }
+                 catch (error) { console.error("Error stopping music:", error); }
+            }
+        }
+
+        // --- Player Movement --- (Unchanged)
+        function moveSpaceship(direction) {
+            if (!gameActive) return; const gameAreaRect = gameArea.getBoundingClientRect(); const spaceshipRect = spaceship.getBoundingClientRect();
+            let currentLeft = spaceship.offsetLeft; let currentBottom = gameAreaRect.height - (spaceship.offsetTop + spaceshipRect.height);
+            switch (direction) {
+                case 'left': spaceship.style.left = Math.max(0, currentLeft - spaceshipSpeed) + 'px'; break;
+                case 'right': spaceship.style.left = Math.min(gameAreaRect.width - spaceshipRect.width, currentLeft + spaceshipSpeed) + 'px'; break;
+                case 'up': spaceship.style.bottom = Math.min(gameAreaRect.height - spaceshipRect.height, currentBottom + spaceshipSpeed) + 'px'; break;
+                case 'down': spaceship.style.bottom = Math.max(0, currentBottom - spaceshipSpeed) + 'px'; break;
+            }
+        }
+
+        // --- Game Logic --- (Unchanged except for sound triggers)
+        function selectWord() {
+            const randomIndex = Math.floor(Math.random() * wordData.length); const selected = wordData[randomIndex];
+            currentWord = selected.word; currentClue = selected.clue; lettersToCollect = currentWord.split(''); collectedLetters = 0;
+            updateWordDisplay(); clueDisplay.textContent = `CLUE: ${currentClue}`; displayFeedback('');
+        }
+        function updateWordDisplay() {
+            let display = "WORD: "; for (let i = 0; i < lettersToCollect.length; i++) { display += (i < collectedLetters ? lettersToCollect[i] : "_") + " "; }
+            wordDisplay.textContent = display.trim();
+        }
+         function spawnLetters() {
+            clearLetters(); const rect = gameArea.getBoundingClientRect(); const availableLetters = [...lettersToCollect];
+            availableLetters.sort(() => Math.random() - 0.5);
+            availableLetters.forEach(letter => {
+                const letterElement = document.createElement('div'); letterElement.classList.add('letter');
+                letterElement.textContent = letter; letterElement.dataset.letter = letter;
+                 const letterWidth = 25; const letterHeight = 30; const maxX = rect.width - letterSpawnPadding - letterWidth; const maxY = rect.height - letterSpawnPadding - letterHeight;
+                 let randomX = Math.random() * (maxX - letterSpawnPadding) + letterSpawnPadding; let randomY = Math.random() * (maxY - letterSpawnPadding) + letterSpawnPadding;
+                letterElement.style.left = `${randomX}px`; letterElement.style.top = `${randomY}px`;
+                gameArea.appendChild(letterElement); lettersOnScreen.push({ element: letterElement, letter: letter });
+            });
+        }
+        function clearLetters() { lettersOnScreen.forEach(item => { if (item?.element?.parentNode === gameArea) { gameArea.removeChild(item.element); } }); lettersOnScreen = []; }
+        function checkCollisions() {
+             if (!gameActive) return; const shipRect = spaceship.getBoundingClientRect(); const shipCenterX = shipRect.left + shipRect.width / 2; const shipCenterY = shipRect.top + shipRect.height / 2;
+             for (let i = lettersOnScreen.length - 1; i >= 0; i--) {
+                 const item = lettersOnScreen[i]; if (!item?.element?.parentNode) { if (item) lettersOnScreen.splice(i, 1); continue; }
+                 const letterRect = item.element.getBoundingClientRect(); const letterCenterX = letterRect.left + letterRect.width / 2; const letterCenterY = letterRect.top + letterRect.height / 2;
+                 const dx = shipCenterX - letterCenterX; const dy = shipCenterY - letterCenterY; const distance = Math.sqrt(dx * dx + dy * dy);
+                 const collisionThreshold = (shipRect.width / 2) + (letterRect.width / 2) - 8;
+                 if (distance < collisionThreshold) { handleCollision(item, i); }
+             }
+         }
+        function handleCollision(letterItem, index) {
+            const correctLetter = lettersToCollect[collectedLetters];
+            if (letterItem.letter === correctLetter) {
+                score += 10; collectedLetters++; updateScoreDisplay(); updateWordDisplay();
+                displayFeedback(`Correct: ${correctLetter}!`, 'success');
+                playSound("C5", "16n"); // Correct letter sound
+
+                if (letterItem.element.parentNode === gameArea) { gameArea.removeChild(letterItem.element); }
+                lettersOnScreen.splice(index, 1);
+
+                if (collectedLetters === lettersToCollect.length) {
+                    displayFeedback(`Word Complete: ${currentWord}!`, 'success');
+                    score += 50; updateScoreDisplay();
+                    playSound("G5", "4n"); // Word complete sound
+                    clearLetters(); setTimeout(nextWord, 2000);
+                }
+            } else {
+                 if (lettersToCollect.includes(letterItem.letter) && !lettersToCollect.slice(0, collectedLetters).includes(letterItem.letter)) {
+                     displayFeedback(`Wrong order! Need ${correctLetter} next.`, 'error');
+                     playSound("A3", "16n"); // Optional wrong sound
+                 } else if (!lettersToCollect.includes(letterItem.letter)) {
+                     displayFeedback(`'${letterItem.letter}' is not in the word!`, 'error');
+                     playSound("A3", "16n"); // Optional wrong sound
+                 }
+            }
+        }
+        function updateScoreDisplay() { scoreDisplay.textContent = `Score: ${score}`; }
+        function displayFeedback(text, type = 'info') {
+            feedbackDisplay.textContent = text; feedbackDisplay.className = 'feedback-display';
+            if (text) { feedbackDisplay.classList.add(type); feedbackDisplay.classList.add('show'); }
+            if (window.feedbackTimeout) clearTimeout(window.feedbackTimeout);
+            if(text !== '') {
+                 window.feedbackTimeout = setTimeout(() => { if (feedbackDisplay.textContent === text) { feedbackDisplay.classList.remove('show'); } }, 2200);
+            } else { feedbackDisplay.classList.remove('show'); }
+        }
+        function nextWord() { clearLetters(); selectWord(); spawnLetters(); }
+        function gameLoop() { checkCollisions(); if (gameActive) { animationFrameId = requestAnimationFrame(gameLoop); } }
+        function stopGameLoop() { if (animationFrameId) { cancelAnimationFrame(animationFrameId); animationFrameId = null; } controlMusic(false); }
+        async function startGame() {
+            if (!audioInitialized && typeof Tone !== 'undefined') {
+                 try { await Tone.start(); initializeAudio(); console.log("Tone.js started successfully!"); }
+                 catch (e) { console.error("Error starting Tone.js:", e); displayFeedback("Audio could not start.", "error"); }
+            }
+            startButton.classList.add('hidden'); gameArea.classList.remove('hidden'); uiArea.classList.remove('hidden');
+            score = 0; updateScoreDisplay(); gameActive = true;
+            const gameAreaRect = gameArea.getBoundingClientRect(); spaceship.style.left = (gameAreaRect.width / 2 - spaceship.offsetWidth / 2) + 'px'; spaceship.style.bottom = '10px';
+            stopGameLoop(); nextWord(); gameLoop(); controlMusic(true);
+        }
+
+        // --- Event Listeners --- (Unchanged)
+        startButton.addEventListener('click', startGame);
+        document.addEventListener('keydown', (e) => {
+             if (!gameActive) return;
+            switch (e.key) {
+                case 'ArrowLeft': case 'a': e.preventDefault(); moveSpaceship('left'); break;
+                case 'ArrowRight': case 'd': e.preventDefault(); moveSpaceship('right'); break;
+                case 'ArrowUp': case 'w': e.preventDefault(); moveSpaceship('up'); break;
+                case 'ArrowDown': case 's': e.preventDefault(); moveSpaceship('down'); break;
+            }
+        });
+
+         // --- Initial Setup --- (Unchanged)
+         updateScoreDisplay(); updateWordDisplay(); clueDisplay.textContent = 'Press Play Now!'; displayFeedback('', 'info');
+
+    </script>
+</body>
+</html>

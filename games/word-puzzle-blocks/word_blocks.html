@@ -1,0 +1,321 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Word Puzzle Blocks</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/lucide-static@latest/umd/lucide.js"></script>
+    <style>
+        html { height: 100%; }
+        body {
+            font-family: 'Press Start 2P', cursive;
+            background-color: #e0f7fa;
+            color: #343a40;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            padding: 10px 0;
+            margin: 0;
+            overflow-x: hidden;
+        }
+        .game-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 8px;
+            padding: 15px;
+            padding-top: 55px; /* *** Increased top padding slightly more for styled button *** */
+            background-color: #ffffff;
+            border-radius: 16px;
+            box-shadow: 0 6px 12px rgba(0, 0, 0, 0.2);
+            border: 4px solid #007bff;
+            position: relative;
+            width: auto;
+            max-width: 95%;
+            margin: auto;
+        }
+        canvas {
+            background-color: #fffde7;
+            border-radius: 10px;
+            border: 3px solid #007bff;
+            display: block;
+        }
+        .info-panel {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            width: 100%;
+            font-size: 0.9em;
+            padding: 10px 15px;
+            background-color: #dc3545;
+            color: #ffffff;
+            border-radius: 8px;
+            box-sizing: border-box;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+        .info-panel div {
+             white-space: nowrap; display: flex; align-items: center; gap: 6px;
+        }
+        .info-panel span {
+            color: #ffc107;
+            font-weight: bold;
+        }
+        #challenge-text {
+            color: #ffc107;
+            text-transform: uppercase;
+            font-weight: bold;
+        }
+        .lives-icon svg {
+             width: 20px; height: 20px;
+             vertical-align: middle;
+             filter: drop-shadow(1px 1px 1px rgba(0,0,0,0.3));
+        }
+         /* Message Box Styling (Unchanged) */
+        #message-box {
+            position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
+            background-color: #ffffff; color: #343a40; padding: 25px 35px;
+            border-radius: 15px; font-size: 1.0em; text-align: center; z-index: 100;
+            border: 3px solid #007bff; box-shadow: 0 8px 20px rgba(0, 0, 0, 0.3);
+            display: none; max-width: 90%; width: 450px;
+        }
+        #message-box h2 { font-size: 1.5em; color: #007bff; margin-bottom: 15px; }
+        #message-box p { font-size: 0.95em; line-height: 1.6; margin-bottom: 15px; text-align: left; }
+        #message-box ul { font-size: 0.95em; list-style: none; padding: 0; text-align: left; margin-bottom: 20px; }
+        #message-box li { margin-bottom: 8px; }
+        #message-box strong { color: #dc3545; }
+        #message-controls { margin-top: 20px; display: flex; justify-content: center; gap: 15px; }
+        #message-controls button {
+             font-family: 'Press Start 2P', cursive; padding: 12px 25px; font-size: 0.9em; cursor: pointer;
+             background-color: #007bff; color: #ffffff; border: none; border-radius: 8px;
+             box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2); transition: all 0.2s ease;
+             text-shadow: 1px 1px 2px rgba(0,0,0,0.3);
+        }
+        #message-controls button:hover { background-color: #0056b3; transform: translateY(-2px); box-shadow: 0 6px 12px rgba(0, 0, 0, 0.3); }
+        #message-controls button:active { transform: translateY(1px); box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3); }
+
+         /* Base style for corner icon buttons */
+         .corner-icon-button {
+            position: absolute;
+            top: 12px; /* Adjusted top position slightly */
+            background: none;
+            border: none;
+            color: #007bff; /* Medium Blue icon */
+            cursor: pointer;
+            padding: 8px;
+            z-index: 10;
+            transition: transform 0.2s ease, color 0.2s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+         }
+         .corner-icon-button:hover {
+            color: #0056b3; /* Darker Blue hover */
+            transform: scale(1.15);
+         }
+         .corner-icon-button svg {
+            width: 24px;
+            height: 24px;
+            filter: drop-shadow(1px 1px 1px rgba(0,0,0,0.1));
+         }
+         #fullscreen-button {
+             /* Inherits .corner-icon-button styles */
+            right: 12px; /* Adjusted right position slightly */
+         }
+
+         /* *** New Styled Home Button *** */
+         .home-button-styled {
+            position: absolute;
+            top: 12px; /* Match fullscreen button */
+            left: 12px; /* Match fullscreen button */
+            z-index: 10;
+            display: inline-flex; /* Use inline-flex for content alignment */
+            align-items: center;
+            justify-content: center;
+            padding: 6px 10px; /* Button padding */
+            font-size: 0.8em; /* Font size for fallback text */
+            cursor: pointer;
+            background-color: #007bff; /* Medium Blue background */
+            color: #ffffff; /* White text/icon */
+            border: none;
+            border-radius: 8px; /* Match message buttons */
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+            transition: all 0.2s ease;
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.3);
+            text-decoration: none; /* Remove underline from link */
+         }
+         .home-button-styled:hover {
+            background-color: #0056b3; /* Darker Blue hover */
+            transform: translateY(-2px);
+            box-shadow: 0 6px 12px rgba(0, 0, 0, 0.3);
+         }
+          .home-button-styled:active {
+             transform: translateY(1px);
+             box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+          }
+         .home-button-styled svg { /* Style icon inside button */
+             width: 18px; /* Slightly smaller icon inside button */
+             height: 18px;
+             margin-right: 4px; /* Space between icon and text if both show */
+             filter: none; /* Remove shadow from icon inside button */
+         }
+         /* Hide fallback text if icon loads (optional refinement) */
+         .home-button-styled span[data-lucide]:only-child {
+              /* If only the span exists (icon loaded), hide the text node */
+              /* This is hard to do reliably with just CSS */
+         }
+         .home-button-styled span { /* Style for the span containing icon/text */
+             display: inline-flex;
+             align-items: center;
+         }
+
+    </style>
+</head>
+<body>
+    <div class="game-container">
+        <a href="../../index.html" id="home-button" class="home-button-styled" title="Back to Home">
+             <span data-lucide="home">Home</span> </a>
+        <button id="fullscreen-button" class="corner-icon-button" title="Toggle Fullscreen">
+             <span data-lucide="maximize-2"></span>
+        </button>
+
+        <h1 class="text-xl mt-0 mb-1 text-center text-[#007bff] drop-shadow-sm">Word Puzzle Blocks</h1>
+        <div class="info-panel">
+            <div>Score: <span id="score">0</span></div>
+            <div id="lives-display"></div>
+            <div>Collect: <span id="challenge-text">NOUNS</span></div>
+        </div>
+        <canvas id="gameCanvas"></canvas>
+        <div class="text-xs mt-1 text-center text-[#007bff] font-bold">Use Arrow Keys (← →) to Move Bucket</div>
+    </div>
+
+    <div id="message-box">
+        <div id="message-content"></div>
+        <div id="message-controls"></div>
+    </div>
+
+    <script>
+        // --- Game Setup ---
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        const scoreElement = document.getElementById('score');
+        const challengeElement = document.getElementById('challenge-text');
+        const livesDisplayElement = document.getElementById('lives-display');
+        const messageBox = document.getElementById('message-box');
+        const messageContent = document.getElementById('message-content');
+        const messageControls = document.getElementById('message-controls');
+        const fullscreenButton = document.getElementById('fullscreen-button');
+
+        // --- Game Constants ---
+        const CANVAS_WIDTH = 500;
+        const CANVAS_HEIGHT = 450;
+        const BUCKET_WIDTH = 80;
+        const BUCKET_HEIGHT = 20; // Base height
+        const BUCKET_RIM_HEIGHT = 10; // Visual rim height
+        const BUCKET_Y_POS = CANVAS_HEIGHT - BUCKET_HEIGHT - BUCKET_RIM_HEIGHT - 5;
+        const BUCKET_SPEED = 15;
+        const WORD_FALL_SPEED_START = 0.75;
+        const WORD_SPAWN_INTERVAL_START = 2500;
+        const STARTING_LIVES = 3;
+        const WORD_PADDING = 10;
+
+        canvas.width = CANVAS_WIDTH;
+        canvas.height = CANVAS_HEIGHT;
+
+        // --- Game State Variables ---
+        let score = 0;
+        let lives = STARTING_LIVES;
+        let currentChallenge = '';
+        let fallingWords = [];
+        let bucket = {
+            x: CANVAS_WIDTH / 2 - BUCKET_WIDTH / 2, y: BUCKET_Y_POS, width: BUCKET_WIDTH,
+            collisionHeight: BUCKET_HEIGHT, baseColor: '#fd7e14', rimColor: '#e85d04',
+        };
+        let wordFallSpeed = WORD_FALL_SPEED_START;
+        let wordSpawnInterval = WORD_SPAWN_INTERVAL_START;
+        let lastSpawnTime = 0;
+        let challengeIntervalId = null;
+        let animationFrameId;
+        let gameRunning = false;
+        let isGameOver = false;
+
+        // --- Word Data & Colors ---
+        const wordData = { /* ... */
+          nouns: ['CAT', 'DOG', 'SUN', 'TREE', 'CAR', 'BOX', 'SKY', 'MAN', 'HAT', 'CUP', 'BED', 'SHIP', 'STAR'],
+          verbs: ['RUN', 'JUMP', 'PLAY', 'EAT', 'SLEEP', 'READ', 'CODE', 'FALL', 'FLY', 'TALK', 'WORK', 'SING', 'DRIVE'],
+          adjectives: ['BIG', 'RED', 'FUN', 'OLD', 'NEW', 'GOOD', 'BAD', 'HOT', 'COLD', 'FAST', 'SLOW', 'SOFT', 'HARD']
+        };
+        const categories = Object.keys(wordData);
+        const blockColors = ['#dc3545', '#007bff', '#ffc107', '#fd7e14', '#28a745', '#6f42c1', '#17a2b8', '#e83e8c'];
+
+        // --- Sound & Music Initialization ---
+        let soundsReady = false;
+        let synthCorrect, synthIncorrect, synthGameOver;
+        let musicSynth, musicSequence;
+        function initSounds() { /* ... same init logic ... */ if (soundsReady) return; try { Tone.start(); synthCorrect = new Tone.Synth({ oscillator: { type: 'sine' }, envelope: { attack: 0.01, decay: 0.1, sustain: 0.1, release: 0.2 } }).toDestination(); synthIncorrect = new Tone.Synth({ oscillator: { type: 'square' }, envelope: { attack: 0.05, decay: 0.2, sustain: 0, release: 0.2 } }).toDestination(); synthGameOver = new Tone.Synth({ oscillator: { type: 'sawtooth' }, envelope: { attack: 0.1, decay: 0.5, sustain: 0, release: 0.3 } }).toDestination(); musicSynth = new Tone.FMSynth({ harmonicity: 1.5, modulationIndex: 5, envelope: { attack: 0.01, decay: 0.2, sustain: 0.1, release: 0.5 }, modulationEnvelope: { attack: 0.05, decay: 0.1, sustain: 0.1, release: 0.5 } }).toDestination(); musicSynth.volume.value = -20; const melody = [ 'C4', 'E4', 'G4', 'E4', 'F4', 'A4', 'G4', null, 'C4', 'D4', 'E4', 'F4', 'G4', 'F4', 'E4', null ]; musicSequence = new Tone.Sequence((time, note) => { if (note) { musicSynth.triggerAttackRelease(note, '8n', time); } }, melody, '8n'); musicSequence.loop = true; Tone.Transport.bpm.value = 100; soundsReady = true; console.log("Sounds & Music Initialized"); } catch (e) { console.error("Failed to initialize sounds/music:", e); } }
+
+        // --- Core Game Logic --- (setChallenge, spawnWord, updateWords - Same logic)
+        function setChallenge() { /* ... */ if (!gameRunning) return; const previousChallenge = currentChallenge; do { currentChallenge = categories[Math.floor(Math.random() * categories.length)]; } while (categories.length > 1 && currentChallenge === previousChallenge); challengeElement.textContent = currentChallenge.toUpperCase(); console.log("New Challenge:", currentChallenge); }
+        function spawnWord() { /* ... */ const category = categories[Math.floor(Math.random() * categories.length)]; const wordList = wordData[category]; const wordText = wordList[Math.floor(Math.random() * wordList.length)]; ctx.font = '16px "Press Start 2P"'; const textMetrics = ctx.measureText(wordText); const textWidth = textMetrics.width; const textHeight = 16; const blockWidth = textWidth + WORD_PADDING * 2; const blockHeight = textHeight + WORD_PADDING; const spawnX = Math.random() * (CANVAS_WIDTH - blockWidth); const blockColor = blockColors[Math.floor(Math.random() * blockColors.length)]; fallingWords.push({ text: wordText, type: category, x: spawnX, y: -blockHeight, blockWidth: blockWidth, blockHeight: blockHeight, blockColor: blockColor, textWidth: textWidth, textHeight: textHeight }); }
+        function updateWords() { /* ... */ for (let i = fallingWords.length - 1; i >= 0; i--) { const word = fallingWords[i]; word.y += wordFallSpeed; if (word.y + word.blockHeight > bucket.y && word.y < bucket.y + bucket.collisionHeight && word.x + word.blockWidth > bucket.x && word.x < bucket.x + bucket.width) { if (word.type === currentChallenge) { score++; if (soundsReady) synthCorrect.triggerAttackRelease('C5', '8n'); } else { score--; lives--; updateLivesDisplay(); if (soundsReady) synthIncorrect.triggerAttackRelease('C3', '8n'); if (lives <= 0) { gameOver(); return; } } updateScoreboard(); fallingWords.splice(i, 1); continue; } if (word.y > CANVAS_HEIGHT) { fallingWords.splice(i, 1); } } }
+
+        // --- UI Update Functions ---
+        function updateScoreboard() { /* ... same logic ... */ scoreElement.textContent = score; if (score > 0 && score % 15 === 0) { wordFallSpeed = Math.min(4, WORD_FALL_SPEED_START + Math.floor(score / 15) * 0.15); wordSpawnInterval = Math.max(400, WORD_SPAWN_INTERVAL_START - Math.floor(score / 15) * 100); console.log(`Difficulty increased: Speed=${wordFallSpeed.toFixed(2)}, Interval=${wordSpawnInterval}ms`); } }
+        function updateLivesDisplay() { /* ... same logic ... */ livesDisplayElement.innerHTML = ''; for (let i = 0; i < STARTING_LIVES; i++) { const heartIcon = document.createElement('span'); heartIcon.classList.add('lives-icon'); const color = i < lives ? '#dc3545' : 'rgba(0,0,0,0.2)'; heartIcon.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="${color}" stroke="${color}" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"/></svg>`; livesDisplayElement.appendChild(heartIcon); } }
+
+
+        // --- Drawing Functions --- (drawBucket, drawWords, drawCanvasBackground, draw - Same logic)
+        function drawBucket() { /* ... */ const x = bucket.x; const y = bucket.y; const w = bucket.width; const hBase = bucket.collisionHeight; const hRim = BUCKET_RIM_HEIGHT; ctx.fillStyle = bucket.baseColor; ctx.fillRect(x, y, w, hBase); ctx.fillStyle = bucket.rimColor; ctx.fillRect(x - 4, y, w + 8, hRim); ctx.strokeStyle = 'rgba(255, 255, 255, 0.4)'; ctx.lineWidth = 1; const numLines = 5; for(let i = 1; i < numLines; i++) { ctx.beginPath(); ctx.moveTo(x + (w / numLines) * i, y + hRim); ctx.lineTo(x + (w / numLines) * i, y + hBase); ctx.stroke(); } }
+        function drawWords() { /* ... */ fallingWords.forEach(word => { const blockX = word.x; const blockY = word.y; const blockW = word.blockWidth; const blockH = word.blockHeight; const cornerRadius = 5; ctx.fillStyle = word.blockColor; ctx.beginPath(); ctx.moveTo(blockX + cornerRadius, blockY); ctx.lineTo(blockX + blockW - cornerRadius, blockY); ctx.quadraticCurveTo(blockX + blockW, blockY, blockX + blockW, blockY + cornerRadius); ctx.lineTo(blockX + blockW, blockY + blockH - cornerRadius); ctx.quadraticCurveTo(blockX + blockW, blockY + blockH, blockX + blockW - cornerRadius, blockY + blockH); ctx.lineTo(blockX + cornerRadius, blockY + blockH); ctx.quadraticCurveTo(blockX, blockY + blockH, blockX, blockY + blockH - cornerRadius); ctx.lineTo(blockX, blockY + cornerRadius); ctx.quadraticCurveTo(blockX, blockY, blockX + cornerRadius, blockY); ctx.closePath(); ctx.fill(); const hex = word.blockColor.substring(1); const rgb = parseInt(hex, 16); const r = (rgb >> 16) & 0xff; const g = (rgb >> 8) & 0xff; const b = (rgb >> 0) & 0xff; const luminance = 0.2126 * r + 0.7152 * g + 0.0722 * b; const textColor = luminance > 130 ? '#000000' : '#FFFFFF'; ctx.fillStyle = textColor; ctx.font = '16px "Press Start 2P"'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(word.text, blockX + blockW / 2, blockY + blockH / 2 + 2); }); }
+        function drawCanvasBackground() { /* ... */ ctx.fillStyle = 'rgba(0, 123, 255, 0.06)'; for (let i = 0; i < 25; i++) { const x = Math.random() * CANVAS_WIDTH; const y = Math.random() * CANVAS_HEIGHT; const size = Math.random() * 2 + 0.5; ctx.beginPath(); ctx.arc(x, y, size, 0, Math.PI * 2); ctx.fill(); } }
+        function draw() { /* ... */ ctx.fillStyle = '#fffde7'; ctx.fillRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT); drawCanvasBackground(); drawBucket(); drawWords(); }
+
+        // --- Game Loop ---
+        function gameLoop(timestamp) { if (!gameRunning || isGameOver) return; if (timestamp - lastSpawnTime > wordSpawnInterval) { spawnWord(); lastSpawnTime = timestamp; } updateWords(); if (isGameOver) return; draw(); animationFrameId = requestAnimationFrame(gameLoop); }
+
+        // --- Input Handling ---
+        document.addEventListener('keydown', (event) => { if (!gameRunning || isGameOver) return; if (!soundsReady) initSounds(); let moved = false; switch (event.key) { case 'ArrowLeft': case 'a': bucket.x -= BUCKET_SPEED; moved = true; break; case 'ArrowRight': case 'd': bucket.x += BUCKET_SPEED; moved = true; break; } bucket.x = Math.max(0, Math.min(bucket.x, CANVAS_WIDTH - bucket.width)); });
+
+         // --- Message Box Logic ---
+         function showMessage(contentHtml, controlsHtml) { messageContent.innerHTML = contentHtml; messageControls.innerHTML = controlsHtml; messageBox.style.display = 'block'; }
+         function hideMessage() { messageBox.style.display = 'none'; }
+         function showInstructions() { const instructionsHtml = `<h2>How to Play</h2><p>Catch the falling words with your bucket!</p><p>Pay attention to the 'Collect:' instruction at the top. Catch words matching the category to score points (+1).</p><p>Catching the wrong type of word will cost you a life!</p><p>The challenge category changes every 15 seconds.</p><p><strong>Controls:</strong></p><ul><li><strong>← Left Arrow:</strong> Move bucket left</li><li><strong>→ Right Arrow:</strong> Move bucket right</li></ul>`; const controlsHtml = `<button id="start-game-button">Start Game</button>`; showMessage(instructionsHtml, controlsHtml); document.getElementById('start-game-button').addEventListener('click', () => { hideMessage(); actuallyStartGame(); }); }
+
+        // --- Game Over Function --- (Stop music)
+        function gameOver() { /* ... same logic ... */ console.log("Game Over!"); isGameOver = true; gameRunning = false; cancelAnimationFrame(animationFrameId); clearInterval(challengeIntervalId); if (soundsReady && musicSequence) { musicSequence.stop(0); Tone.Transport.stop(); } if (soundsReady) synthGameOver.triggerAttackRelease('A2', '2n'); const gameOverHtml = `<h2>Game Over!</h2><p style="text-align: center; font-size: 1.1em;">Final Score: <span style="color:#dc3545; font-weight:bold;">${score}</span></p>`; const controlsHtml = `<button id="play-again-button">Play Again</button>`; showMessage(gameOverHtml, controlsHtml); document.getElementById('play-again-button').addEventListener('click', () => { hideMessage(); restartGame(); }); }
+
+        // --- Restart Game Functionality --- (Stop music)
+        function restartGame() { /* ... same logic ... */ console.log("Restarting game..."); if (soundsReady && musicSequence) { musicSequence.stop(0); Tone.Transport.stop(); } score = 0; lives = STARTING_LIVES; fallingWords = []; wordFallSpeed = WORD_FALL_SPEED_START; wordSpawnInterval = WORD_SPAWN_INTERVAL_START; isGameOver = false; gameRunning = false; bucket.x = CANVAS_WIDTH / 2 - BUCKET_WIDTH / 2; if (animationFrameId) cancelAnimationFrame(animationFrameId); if (challengeIntervalId) clearInterval(challengeIntervalId); updateScoreboard(); updateLivesDisplay(); showInstructions(); }
+
+
+        // --- Fullscreen API Logic --- (Removed fallback text)
+        function updateFullscreenIcon() {
+             try {
+                 const iconName = document.fullscreenElement ? 'minimize-2' : 'maximize-2';
+                 const title = document.fullscreenElement ? "Exit Fullscreen" : "Enter Fullscreen";
+                 fullscreenButton.innerHTML = `<span data-lucide="${iconName}"></span>`;
+                 fullscreenButton.title = title;
+                 lucide.createIcons();
+             } catch (e) {
+                 console.error("Error updating fullscreen icon:", e);
+                 fullscreenButton.innerHTML = ''; // Clear content if icon fails
+             }
+        }
+        function toggleFullScreen() { if (!document.fullscreenElement) { document.documentElement.requestFullscreen().then(updateFullscreenIcon).catch((err) => { console.error(`FS Error: ${err.message}`); alert("Fullscreen failed."); }); } else { if (document.exitFullscreen) { document.exitFullscreen().then(updateFullscreenIcon).catch((err) => console.error(`Exit FS Error: ${err.message}`)); } } }
+        fullscreenButton.addEventListener('click', toggleFullScreen);
+        document.addEventListener('fullscreenchange', updateFullscreenIcon);
+
+
+        // --- Initialize and Start Game Flow ---
+        function actuallyStartGame() { /* ... same logic ... */ if (gameRunning || isGameOver) return; console.log("Starting gameplay..."); if (!soundsReady) { initSounds(); } gameRunning = true; isGameOver = false; lastSpawnTime = performance.now(); setChallenge(); if (challengeIntervalId) clearInterval(challengeIntervalId); challengeIntervalId = setInterval(setChallenge, 15000); if (soundsReady && musicSequence) { Tone.Transport.start(); musicSequence.start(0); } if (animationFrameId) cancelAnimationFrame(animationFrameId); animationFrameId = requestAnimationFrame(gameLoop); }
+        function initializeGame() { console.log("Initializing Word Puzzle Blocks..."); try { lucide.createIcons(); } catch(e) { console.error("Lucide icons failed:", e); } updateFullscreenIcon(); updateScoreboard(); updateLivesDisplay(); showInstructions(); }
+
+        window.onload = initializeGame;
+
+    </script>
+</body>
+</html>

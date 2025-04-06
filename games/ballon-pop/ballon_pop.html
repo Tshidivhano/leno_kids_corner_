@@ -1,0 +1,607 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Balloon Pop Grammar Game</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        /* Custom styles for the game */
+        body {
+            font-family: 'Inter', sans-serif;
+            overflow: hidden; /* Prevent scrollbars */
+            background: linear-gradient(to bottom, #87CEEB 0%, #f0f8ff 70%, #a8e063 100%); /* Sky to light grass gradient */
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        /* Game container */
+        #game-container {
+            position: relative;
+            width: 95%;
+            max-width: 800px; /* Max width for larger screens */
+            height: 90vh; /* Adjust height */
+            max-height: 600px;
+            background-color: rgba(255, 255, 255, 0.3); /* Slightly transparent white */
+            border-radius: 1rem; /* Rounded corners */
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+            overflow: hidden; /* Keep balloons inside */
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* Game area where balloons float */
+        #game-area {
+            flex-grow: 1;
+            position: relative;
+            overflow: hidden; /* Clip balloons */
+        }
+
+        /* Balloon styling */
+        .balloon {
+            position: absolute;
+            bottom: -100px; /* Start below the screen */
+            width: 80px;
+            height: 100px;
+            background-color: red; /* Default color, will be randomized */
+            border-radius: 50% 50% 50% 50% / 60% 60% 40% 40%; /* Balloon shape */
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 14px; /* Smaller font for words */
+            color: white;
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.5);
+            user-select: none; /* Prevent text selection */
+            animation: floatUp 10s linear infinite; /* Floating animation */
+            box-shadow: inset -5px -5px 10px rgba(0,0,0,0.2); /* Inner shadow for 3D effect */
+        }
+
+        /* Small knot at the bottom of the balloon */
+        .balloon::after {
+            content: '';
+            position: absolute;
+            bottom: -8px; /* Position the knot */
+            left: 50%;
+            transform: translateX(-50%);
+            width: 10px;
+            height: 10px;
+            background: inherit; /* Same color as balloon */
+            border-radius: 50%;
+        }
+
+        /* Floating animation */
+        @keyframes floatUp {
+            0% {
+                bottom: -100px;
+                transform: translateX(0) rotate(0deg);
+            }
+            50% {
+                transform: translateX(20px) rotate(5deg); /* Gentle sway */
+            }
+            100% {
+                bottom: 110%; /* Float off the top */
+                transform: translateX(-10px) rotate(-5deg);
+            }
+        }
+
+        /* Pop animation */
+        .popped {
+            animation: pop 0.3s ease-out forwards;
+            pointer-events: none; /* Disable further clicks during pop */
+        }
+
+        @keyframes pop {
+            0% {
+                transform: scale(1);
+                opacity: 1;
+            }
+            100% {
+                transform: scale(1.5);
+                opacity: 0;
+            }
+        }
+
+        /* Message/Mode Selection box styling */
+        #message-box {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background-color: rgba(0, 0, 0, 0.85); /* Darker background */
+            color: white;
+            padding: 2rem;
+            border-radius: 1rem;
+            text-align: center;
+            z-index: 100; /* Ensure it's on top */
+            display: none; /* Hidden by default */
+            font-size: 1.1rem; /* Adjusted font size */
+            box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+            width: 80%;
+            max-width: 400px;
+        }
+         #message-box button, .mode-button {
+             margin-top: 1rem;
+             padding: 0.6rem 1.2rem; /* Slightly larger buttons */
+             border-radius: 0.5rem;
+             background-color: #4CAF50; /* Green */
+             color: white;
+             border: none;
+             cursor: pointer;
+             font-weight: bold;
+             transition: background-color 0.2s, transform 0.1s;
+             display: inline-block; /* Allow margin between mode buttons */
+             margin-left: 0.5rem;
+             margin-right: 0.5rem;
+         }
+         #message-box button:hover, .mode-button:hover {
+             background-color: #45a049; /* Darker Green */
+             transform: scale(1.05);
+         }
+         /* Specific styling for mode buttons if needed */
+         .mode-button {
+             background-color: #2196F3; /* Blue for mode buttons */
+         }
+         .mode-button:hover {
+             background-color: #1e88e5; /* Darker Blue */
+         }
+
+
+        /* Scoreboard styling */
+        #scoreboard {
+            background-color: rgba(0, 0, 0, 0.5); /* Semi-transparent black */
+            color: white;
+            padding: 0.5rem 1rem;
+            border-radius: 0 0 0.75rem 0.75rem; /* Rounded bottom corners */
+            text-align: center;
+            font-size: 0.9rem; /* Slightly smaller font */
+            display: flex; /* Use flexbox for better alignment */
+            justify-content: space-around; /* Space out items */
+            align-items: center;
+            flex-wrap: wrap; /* Allow wrapping on small screens */
+        }
+        #scoreboard span, #scoreboard a { /* Apply margin to links too */
+            margin: 0.2rem 0.5rem; /* Adjust spacing */
+            font-weight: bold;
+            white-space: nowrap; /* Prevent wrapping within a span */
+        }
+        /* Styling for the heart icons */
+        .heart-icon {
+             font-size: 1.2em; /* Adjust icon size */
+             line-height: 1;
+             vertical-align: middle;
+             margin-left: 2px; /* Space between icons */
+             color: #FF4136; /* Red color for hearts */
+        }
+        .heart-icon.empty {
+            opacity: 0.3; /* Dim empty hearts */
+        }
+
+        /* Homepage button styling */
+        .home-button {
+            display: inline-block;
+            padding: 0.3rem 0.8rem; /* Smaller padding */
+            background-color: #4CAF50; /* Green background */
+            color: white;
+            border-radius: 0.4rem;
+            text-decoration: none;
+            font-size: 0.8rem; /* Smaller font size */
+            transition: background-color 0.2s;
+            font-weight: normal; /* Normal weight to differentiate */
+        }
+        .home-button:hover {
+            background-color: #45a049; /* Darker Green on hover */
+        }
+
+
+    </style>
+</head>
+<body class="bg-blue-200 flex items-center justify-center min-h-screen">
+
+    <div id="game-container" class="bg-white rounded-lg shadow-xl">
+        <div id="scoreboard">
+             <a href="../../index.html" class="home-button">Homepage</a>
+            <span>Mode: <span id="mode-display">-</span></span>
+            <span>Score: <span id="score">0</span></span>
+            <span>Time: <span id="time">60</span>s</span>
+            <span>Lives: <span id="lives-display"></span></span>
+            <span class="w-full text-center mt-1"> <span id="prompt-label">Pop:</span> <span id="prompt" class="font-bold text-yellow-300">-</span>
+            </span>
+        </div>
+
+        <div id="game-area">
+            </div>
+
+        <div id="message-box">
+            <p id="message-text">Welcome!</p>
+            <div id="mode-selection" class="mt-4">
+                 </div>
+            <button id="message-button" class="hidden">Start Game</button> </div>
+    </div>
+
+    <script>
+        // --- Game Configuration ---
+        const GAME_TIME = 60; // Seconds per game session
+        const BALLOON_INTERVAL = 1100; // Milliseconds between new balloons (slightly faster)
+        const STARTING_LIVES = 3;
+        const BALLOON_COLORS = ['#FF6347', '#4682B4', '#32CD32', '#FFD700', '#6A5ACD', '#FF69B4']; // Tomato, SteelBlue, LimeGreen, Gold, SlateBlue, HotPink
+
+        // --- Word Lists ---
+        const words = {
+            nouns: ['cat', 'house', 'tree', 'sun', 'book', 'friend', 'idea', 'joy', 'car', 'water', 'bird', 'song', 'cloud', 'star', 'dream', 'time', 'world', 'game', 'love', 'life'],
+            verbs: ['run', 'jump', 'eat', 'sleep', 'read', 'write', 'think', 'play', 'sing', 'dance', 'fly', 'swim', 'talk', 'listen', 'watch', 'give', 'take', 'make', 'find', 'grow'],
+            adjectives: ['happy', 'big', 'red', 'quick', 'soft', 'bright', 'loud', 'tasty', 'kind', 'funny', 'blue', 'fast', 'warm', 'cold', 'small', 'dark', 'long', 'new', 'old', 'good'],
+            prepositions: ['on', 'in', 'at', 'under', 'over', 'with', 'for', 'from', 'to', 'beside', 'near', 'above', 'below', 'through', 'around', 'about', 'after', 'before', 'during', 'without']
+        };
+
+        const synonyms = {
+            'happy': 'glad', 'big': 'large', 'fast': 'quick', 'sad': 'unhappy',
+            'small': 'tiny', 'begin': 'start', 'end': 'finish', 'good': 'fine',
+            'bad': 'poor', 'cold': 'icy', 'hot': 'warm', 'loud': 'noisy',
+            'quiet': 'silent', 'easy': 'simple', 'hard': 'tough', 'rich': 'wealthy',
+            'true': 'right', 'false': 'wrong', 'near': 'close', 'speak': 'talk'
+        };
+        const synonymTargets = Object.keys(synonyms);
+        const synonymValues = Object.values(synonyms);
+        const allWordsForDistraction = [].concat(...Object.values(words), synonymTargets, synonymValues);
+
+
+        // --- Game State ---
+        let gameMode = ''; // 'nouns', 'verbs', 'synonyms'
+        let score = 0;
+        let lives = STARTING_LIVES;
+        let timeLeft = GAME_TIME;
+        let gameIntervalId = null;
+        let timerId = null;
+        let popSound; // For correct pop sound
+        let errorSound; // For incorrect pop sound
+        let currentSynonymTarget = ''; // For synonym mode
+
+        // --- DOM Elements ---
+        const gameArea = document.getElementById('game-area');
+        const scoreDisplay = document.getElementById('score');
+        const timeDisplay = document.getElementById('time');
+        const livesDisplay = document.getElementById('lives-display');
+        const modeDisplay = document.getElementById('mode-display');
+        const promptLabel = document.getElementById('prompt-label');
+        const promptDisplay = document.getElementById('prompt');
+        const messageBox = document.getElementById('message-box');
+        const messageText = document.getElementById('message-text');
+        const messageButton = document.getElementById('message-button');
+        const modeSelectionContainer = document.getElementById('mode-selection');
+
+        // --- Sound Initialization ---
+        function initSound() {
+            // Create synth for the correct pop sound
+            popSound = new Tone.Synth({
+                oscillator: { type: 'sine' },
+                envelope: { attack: 0.005, decay: 0.1, sustain: 0.01, release: 0.1 },
+                volume: -10 // Keep pop sound volume
+            }).toDestination();
+
+            // Create synth for the error sound (incorrect pop)
+            errorSound = new Tone.Synth({
+                oscillator: { type: 'square' }, // Use square wave for a harsher sound
+                envelope: { attack: 0.01, decay: 0.15, sustain: 0, release: 0.1 }, // Shorter, sharper envelope
+                volume: -15 // Make error sound slightly quieter
+            }).toDestination();
+        }
+
+        // --- Game Functions ---
+
+        // Show messages or mode selection
+        function showMessage(text, buttonText = null, showModes = false) {
+            messageText.textContent = text;
+            modeSelectionContainer.innerHTML = ''; // Clear previous mode buttons
+            modeSelectionContainer.style.display = showModes ? 'block' : 'none';
+            messageButton.style.display = buttonText ? 'block' : 'none';
+
+            if (buttonText) {
+                messageButton.textContent = buttonText;
+                messageButton.onclick = () => {
+                    // Ensure Tone.js context is started by user interaction
+                    if (Tone.context.state !== 'running') {
+                        Tone.start();
+                    }
+                    initSound(); // Initialize synth after user interaction (or re-init)
+                    messageBox.style.display = 'none';
+                    if (buttonText === 'Start Game' || buttonText === 'Restart') {
+                        startGame();
+                    }
+                };
+            }
+
+            if (showModes) {
+                // Create buttons for each mode
+                ['Nouns', 'Verbs', 'Synonyms'].forEach(modeName => {
+                    const btn = document.createElement('button');
+                    btn.textContent = modeName;
+                    btn.classList.add('mode-button');
+                    btn.onclick = () => {
+                        gameMode = modeName.toLowerCase();
+                         // Ensure Tone.js context is started by user interaction
+                        if (Tone.context.state !== 'running') {
+                           Tone.start();
+                        }
+                        initSound();
+                        showMessage(`Selected Mode: ${modeName}. Ready?`, 'Start Game');
+                    };
+                    modeSelectionContainer.appendChild(btn);
+                });
+            }
+
+            messageBox.style.display = 'block';
+        }
+
+        // Update the lives display (using Unicode hearts)
+        function updateLivesDisplay() {
+            livesDisplay.innerHTML = ''; // Clear existing hearts
+            for (let i = 0; i < STARTING_LIVES; i++) {
+                const heartSpan = document.createElement('span');
+                heartSpan.classList.add('heart-icon'); // Add class for styling
+                if (i < lives) {
+                    heartSpan.textContent = '\u2665'; // Filled heart character ♥
+                } else {
+                    heartSpan.textContent = '\u2661'; // Empty heart character ♡
+                    heartSpan.classList.add('empty'); // Add class to dim empty hearts
+                }
+                livesDisplay.appendChild(heartSpan);
+            }
+        }
+
+
+        // Get a random word based on game mode
+        function getRandomWord() {
+            let word = '';
+            let type = 'distractor'; // Default type
+
+            if (gameMode === 'nouns') {
+                // 60% chance noun, 40% chance other part of speech
+                if (Math.random() < 0.6) {
+                    word = words.nouns[Math.floor(Math.random() * words.nouns.length)];
+                    type = 'noun';
+                } else {
+                    const otherTypes = ['verbs', 'adjectives', 'prepositions'];
+                    const randomOtherType = otherTypes[Math.floor(Math.random() * otherTypes.length)];
+                    word = words[randomOtherType][Math.floor(Math.random() * words[randomOtherType].length)];
+                    type = 'distractor'; // It's not the target noun
+                }
+            } else if (gameMode === 'verbs') {
+                 // 60% chance verb, 40% chance other part of speech
+                if (Math.random() < 0.6) {
+                    word = words.verbs[Math.floor(Math.random() * words.verbs.length)];
+                    type = 'verb';
+                } else {
+                    const otherTypes = ['nouns', 'adjectives', 'prepositions'];
+                    const randomOtherType = otherTypes[Math.floor(Math.random() * otherTypes.length)];
+                    word = words[randomOtherType][Math.floor(Math.random() * words[randomOtherType].length)];
+                    type = 'distractor'; // It's not the target verb
+                }
+            } else if (gameMode === 'synonyms') {
+                // Need to generate either the correct synonym or a distractor
+                const isCorrectSynonym = Math.random() < 0.35; // 35% chance it's the correct synonym
+                if (isCorrectSynonym && currentSynonymTarget && synonyms[currentSynonymTarget]) { // Check if synonym exists
+                    word = synonyms[currentSynonymTarget];
+                    type = 'synonym'; // Mark as the correct synonym
+                } else {
+                    // Pick a random distractor word (avoiding the current target and its synonym)
+                    let currentSyn = synonyms[currentSynonymTarget] || ''; // Handle cases where target might not be in dict momentarily
+                    let distractorPool = allWordsForDistraction.filter(w => w !== currentSynonymTarget && w !== currentSyn);
+                    if (distractorPool.length > 0) { // Ensure pool is not empty
+                       word = distractorPool[Math.floor(Math.random() * distractorPool.length)];
+                    } else {
+                        // Fallback if pool is somehow empty (e.g., very small word lists)
+                        word = words.nouns[0]; // Just pick a default word
+                    }
+                    type = 'distractor';
+                }
+            }
+
+            // Ensure a word was actually selected
+             if (!word) {
+                 console.warn("Failed to select a word for balloon.");
+                 // Provide a fallback word if generation failed
+                 word = words.nouns[Math.floor(Math.random() * words.nouns.length)];
+                 type = 'noun'; // Assign a default type
+             }
+
+
+            return { word, type };
+        }
+
+        // Set a new target word for synonym mode
+        function setNewSynonymTarget() {
+            currentSynonymTarget = synonymTargets[Math.floor(Math.random() * synonymTargets.length)];
+            promptLabel.textContent = 'Synonym for:';
+            promptDisplay.textContent = currentSynonymTarget;
+        }
+
+        // Create a balloon element
+        function createBalloon() {
+            const { word, type } = getRandomWord();
+
+            // Avoid creating empty balloons if word generation fails (double check)
+            if (!word) return;
+
+            const balloon = document.createElement('div');
+            balloon.classList.add('balloon');
+            balloon.textContent = word;
+            // Store type for Noun/Verb modes, store word itself for Synonym mode checking
+            balloon.dataset.type = type;
+            balloon.dataset.word = word; // Store the actual word for synonym check
+
+            // Randomize color
+            balloon.style.backgroundColor = BALLOON_COLORS[Math.floor(Math.random() * BALLOON_COLORS.length)];
+
+            // Randomize horizontal starting position
+            const gameAreaWidth = gameArea.offsetWidth;
+            const maxLeft = Math.max(0, gameAreaWidth - 80); // Ensure maxLeft is not negative
+            balloon.style.left = `${Math.random() * maxLeft}px`;
+
+            // Randomize animation duration (speed) slightly
+            const duration = 8 + Math.random() * 5; // Between 8 and 13 seconds
+            balloon.style.animationDuration = `${duration}s`;
+
+            // Add event listener for popping
+            balloon.addEventListener('click', popBalloon);
+            balloon.addEventListener('touchstart', popBalloon, { passive: true }); // Add touch support
+
+            gameArea.appendChild(balloon);
+
+            // Remove balloon if it floats off screen
+            setTimeout(() => {
+                // Check if balloon still exists in the DOM before trying to remove
+                if (balloon && balloon.parentElement === gameArea) {
+                    gameArea.removeChild(balloon);
+                }
+            }, duration * 1000 + 100); // Add a small buffer
+        }
+
+
+        // Handle balloon popping
+        function popBalloon(event) {
+            event.stopPropagation();
+            event.preventDefault();
+
+            const balloon = event.currentTarget;
+            const poppedType = balloon.dataset.type;
+            const poppedWord = balloon.dataset.word;
+
+            if (balloon.classList.contains('popped')) return;
+            balloon.classList.add('popped');
+
+            // Determine if the pop was correct
+            let correctPop = false;
+            if (gameMode === 'nouns') {
+                correctPop = (poppedType === 'noun');
+            } else if (gameMode === 'verbs') {
+                correctPop = (poppedType === 'verb');
+            } else if (gameMode === 'synonyms') {
+                correctPop = (poppedWord === synonyms[currentSynonymTarget]);
+            }
+
+            // Play sound and update score/lives
+            if (correctPop) {
+                // Play correct pop sound
+                if (popSound) {
+                    popSound.triggerAttackRelease("C4", "8n", Tone.now());
+                }
+                score++;
+                scoreDisplay.textContent = score;
+                if (gameMode === 'synonyms') {
+                    setNewSynonymTarget(); // Get new word after correct synonym pop
+                }
+            } else {
+                // Play error sound
+                if (errorSound) {
+                    errorSound.triggerAttackRelease("C3", "8n", Tone.now()); // Trigger low C note
+                }
+                lives--;
+                updateLivesDisplay();
+                 // Add visual feedback for losing life
+                 livesDisplay.parentElement.classList.add('animate-pulse');
+                 livesDisplay.classList.add('text-red-700');
+                 setTimeout(() => {
+                    livesDisplay.parentElement.classList.remove('animate-pulse');
+                    livesDisplay.classList.remove('text-red-700');
+                 }, 600);
+
+                if (lives <= 0) {
+                    endGame(false); // Game over if lives run out
+                }
+            }
+
+            // Remove balloon after pop animation
+            setTimeout(() => {
+                 // Check if balloon still exists in the DOM before trying to remove
+                if (balloon && balloon.parentElement === gameArea) {
+                    gameArea.removeChild(balloon);
+                }
+            }, 300); // Match pop animation duration
+        }
+
+        // Update timer
+        function updateTimer() {
+            timeLeft--;
+            timeDisplay.textContent = timeLeft;
+            if (timeLeft <= 0) {
+                endGame(false); // Game over if time runs out
+            }
+        }
+
+         // End the game session
+        function endGame(won) { // 'won' parameter isn't really used here, game ends on time/lives
+            clearInterval(gameIntervalId);
+            clearInterval(timerId);
+            gameArea.innerHTML = ''; // Clear remaining balloons
+
+            let message = `Game Over! Your score: ${score}`;
+            if (lives <= 0) {
+                message = `Out of lives! Your score: ${score}`;
+            } else if (timeLeft <= 0) {
+                 message = `Time's up! Your score: ${score}`;
+            }
+
+            // Go back to mode selection after game over
+            showMessage(message, null, true); // Show message and mode selection, no start button yet
+        }
+
+        // Start the game session
+        function startGame() {
+            score = 0;
+            lives = STARTING_LIVES;
+            timeLeft = GAME_TIME;
+
+            scoreDisplay.textContent = score;
+            timeDisplay.textContent = timeLeft;
+            modeDisplay.textContent = gameMode.charAt(0).toUpperCase() + gameMode.slice(1); // Display selected mode
+            updateLivesDisplay(); // Initialize lives display
+
+            // Set initial prompt based on mode
+            if (gameMode === 'nouns') {
+                promptLabel.textContent = 'Pop:';
+                promptDisplay.textContent = 'Nouns';
+            } else if (gameMode === 'verbs') {
+                promptLabel.textContent = 'Pop:';
+                promptDisplay.textContent = 'Verbs';
+            } else if (gameMode === 'synonyms') {
+                 setNewSynonymTarget(); // Set the first synonym target
+            }
+
+            // Clear previous intervals if any (safety check)
+            clearInterval(gameIntervalId);
+            clearInterval(timerId);
+            gameArea.innerHTML = ''; // Clear area
+
+            // Start game loops
+            gameIntervalId = setInterval(createBalloon, BALLOON_INTERVAL);
+            timerId = setInterval(updateTimer, 1000);
+        }
+
+        // --- Initial Setup ---
+        // Show the initial mode selection screen
+        showMessage('Select a Game Mode:', null, true);
+
+        // Add safety check for audio context
+        document.body.addEventListener('click', () => {
+             if (Tone.context.state !== 'running') {
+                Tone.start().then(() => {
+                    console.log('Audio context started');
+                    // Optionally init sound here if not done elsewhere on interaction
+                    // if (!popSound && !errorSound) initSound();
+                });
+             }
+        }, { once: true }); // Run only once on first click anywhere
+
+
+    </script>
+
+</body>
+</html>

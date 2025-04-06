@@ -1,0 +1,475 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Jungle Word Snake</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&display=swap" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.js" defer></script>
+    <style>
+        /* General body styling */
+        body {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            background: linear-gradient(to bottom, #4CAF50, #8BC34A); /* Jungle green gradient */
+            background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="100" height="100"><path d="M50 0 C 40 20, 60 20, 50 40 S 40 60, 50 80 S 40 100, 50 100" fill="none" stroke="%23388E3C" stroke-width="2"/><path d="M20 0 C 10 20, 30 20, 20 40 S 10 60, 20 80 S 10 100, 20 100" fill="none" stroke="%23689F38" stroke-width="1.5" opacity="0.7"/><path d="M80 0 C 70 20, 90 20, 80 40 S 70 60, 80 80 S 70 100, 80 100" fill="none" stroke="%23689F38" stroke-width="1.5" opacity="0.7"/></svg>');
+            background-size: 150px 150px;
+            background-repeat: repeat;
+            font-family: 'Poppins', sans-serif;
+            color: #333;
+            margin: 0;
+            overflow: hidden; /* Prevent scrollbars */
+        }
+
+        /* Wrapper for positioning modal relative to game area */
+        .game-wrapper {
+            position: relative;
+            width: 90vw;
+            max-width: 600px; /* Limit overall width */
+        }
+
+        /* Main game container styling */
+        .game-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            background-color: rgba(255, 255, 255, 0.85); /* Semi-transparent background */
+            padding: 20px;
+            border-radius: 15px;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+            text-align: center;
+            width: 100%;
+            max-height: 95vh; /* Limit height */
+            overflow: hidden; /* Prevent internal overflow */
+            /* Initially hidden until mode is selected */
+            visibility: hidden;
+        }
+
+        /* Game title */
+        h1 {
+            color: #2E7D32;
+            margin-bottom: 10px;
+        }
+
+        /* Panel for score, level, lives, timer, instructions */
+        .info-panel {
+            display: flex;
+            justify-content: space-between; /* Distribute items */
+            align-items: center; /* Align items vertically */
+            flex-wrap: wrap; /* Allow items to wrap on smaller screens */
+            gap: 10px 15px; /* Spacing between items */
+            width: 100%;
+            margin-bottom: 15px;
+            font-size: 1.1em;
+            font-weight: 600;
+            color: #388E3C; /* Jungle green text */
+        }
+
+        .info-panel span {
+             flex-shrink: 0; /* Prevent items from shrinking too much */
+             white-space: nowrap; /* Prevent text wrapping within items */
+        }
+        /* Styling for heart icons */
+        #lives-display {
+             font-size: 1.4em; /* Larger hearts */
+             line-height: 1;
+             color: #e53935; /* Red hearts */
+             flex-shrink: 0;
+             white-space: nowrap;
+        }
+        #lives-display .empty-heart { color: #bdbdbd; } /* Grey for lost lives */
+        /* Styling for timer display (Challenge mode) */
+        #timer-display {
+            font-weight: bold;
+            color: #1565C0; /* Blue timer text */
+            display: none; /* Hidden by default */
+        }
+
+        /* Game board canvas styling */
+        #game-board {
+            border: 5px solid #388E3C; /* Wood-like border */
+            background-color: #C8E6C9; /* Light green background */
+            background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 40 40"><path fill="%23A5D6A7" d="M0 0h20v20H0z M20 20h20v20H20z"/></svg>'); /* Subtle grid */
+            display: block; /* Remove extra space below canvas */
+            max-width: 100%; /* Ensure canvas fits container */
+            height: auto; /* Maintain aspect ratio */
+            border-radius: 5px;
+            box-shadow: inset 0 0 10px rgba(0,0,0,0.1);
+            margin-top: 10px;
+        }
+
+        /* General button styling */
+        button, .button-link { /* Apply base styles to buttons and links styled as buttons */
+            display: inline-block; /* Needed for padding on anchor tags */
+            background: linear-gradient(to bottom, #8BC34A, #689F38); /* Green gradient */
+            border: 2px solid #33691E; /* Dark green border */
+            color: white !important; /* Ensure text is white, important for specificity */
+            padding: 10px 20px;
+            font-size: 1em;
+            font-family: 'Poppins', sans-serif;
+            font-weight: 600;
+            border-radius: 20px; /* Rounded corners */
+            cursor: pointer;
+            transition: all 0.2s ease; /* Smooth transitions */
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            margin: 5px; /* Spacing around buttons */
+            text-decoration: none; /* Remove underline from links */
+            text-align: center;
+        }
+        button:hover, .button-link:hover {
+            background: linear-gradient(to bottom, #9CCC65, #7CB342); /* Lighter green on hover */
+            box-shadow: 0 6px 8px rgba(0, 0, 0, 0.15);
+            transform: translateY(-2px); /* Slight lift effect */
+            color: white !important;
+        }
+        button:active, .button-link:active {
+            transform: translateY(1px); /* Push down effect */
+            box-shadow: 0 2px 3px rgba(0, 0, 0, 0.1);
+        }
+        /* Specific style for Back button */
+        .back-button {
+             background: linear-gradient(to bottom, #a1887f, #795548); /* Brown gradient */
+             border-color: #4e342e; /* Darker brown border */
+        }
+         .back-button:hover {
+             background: linear-gradient(to bottom, #bcaaa4, #8d6e63); /* Lighter brown */
+         }
+
+
+        /* General message box styling */
+        .message-box {
+            position: absolute; /* Position over the game */
+            top: 50%; left: 50%;
+            transform: translate(-50%, -50%); /* Center the box */
+            background-color: rgba(0, 0, 0, 0.80); /* Darker semi-transparent background */
+            color: white;
+            padding: 20px;
+            border-radius: 10px;
+            text-align: center;
+            z-index: 10; /* Ensure it's above the canvas */
+            font-size: 1.5em;
+            display: none; /* Hidden by default */
+            width: 85%; /* Responsive width */
+            max-width: 450px; /* Maximum width */
+        }
+         #game-over-box p { margin-bottom: 10px; } /* Spacing in game over box */
+        .message-box .modal-buttons { /* Container for buttons inside modals */
+             margin-top: 20px;
+             display: flex;
+             flex-direction: column; /* Stack buttons vertically by default */
+             gap: 10px;
+             align-items: center;
+             flex-wrap: wrap; /* Allow wrapping */
+             justify-content: center;
+        }
+         .message-box .modal-buttons button,
+         .message-box .modal-buttons .button-link {
+             width: 100%; /* Make buttons fill width */
+             min-width: 160px; /* Minimum width */
+             max-width: 220px; /* Sensible max width */
+             margin: 5px 0; /* Adjust margin for vertical stacking */
+         }
+         /* Adjust layout for game over box buttons to be side-by-side if space allows */
+         #game-over-box .modal-buttons {
+             flex-direction: row; /* Try placing side-by-side */
+         }
+
+
+        /* Specific styling for Mode Selection Modal */
+        #mode-select-modal {
+            background-color: rgba(255, 255, 255, 0.97); /* Lighter background */
+            color: #333; /* Darker text */
+            padding: 25px 30px;
+            border-radius: 15px;
+            z-index: 20; /* Above other message boxes */
+            box-shadow: 0 8px 30px rgba(0, 0, 0, 0.25);
+            border: 3px solid #388E3C; /* Green border */
+            max-width: 500px;
+        }
+        #mode-select-modal h2 { margin-top: 0; margin-bottom: 20px; color: #2E7D32; font-size: 1.3em; }
+        #mode-select-modal .modal-buttons button,
+        #mode-select-modal .modal-buttons .button-link { /* Ensure back button also fills width */
+             width: 100%; min-width: 180px; font-size: 0.9em; padding: 10px 15px;
+             max-width: none; /* Allow full width in this modal */
+        }
+
+
+        /* Responsive adjustments for smaller screens */
+         @media (max-width: 700px) {
+            .info-panel { font-size: 1em; justify-content: center; gap: 8px 10px; }
+             #lives-display { font-size: 1.2em; }
+             #timer-display { font-size: 1em; }
+         }
+         @media (max-width: 480px) {
+             h1 { font-size: 1.4em; }
+             .info-panel { font-size: 0.9em; }
+             #lives-display { font-size: 1.1em; }
+             button, .button-link { padding: 8px 15px; font-size: 0.9em; }
+             .message-box { font-size: 1.1em; padding: 15px; width: 85%; }
+             #mode-select-modal { padding: 20px; width: 85%; }
+             #mode-select-modal button,
+             #mode-select-modal .button-link { min-width: 150px; }
+             /* Stack game over buttons on very small screens */
+             #game-over-box .modal-buttons { flex-direction: column; }
+         }
+    </style>
+</head>
+<body>
+    <div class="game-wrapper">
+        <div class="game-container"> <h1>Jungle Word Snake</h1>
+            <div class="info-panel">
+                <span id="score">Score: 0</span>
+                <span id="level">Level: 1</span>
+                <span id="lives-display">❤️❤️❤️</span>
+                <span id="timer-display">Time: 60</span>
+                <span id="instruction">Collect: Nouns</span>
+            </div>
+            <canvas id="game-board" width="400" height="400"></canvas>
+        </div>
+
+        <div id="mode-select-modal" class="message-box"> <h2>Choose Game Mode</h2>
+            <div class="modal-buttons">
+                <button id="normal-mode-button">Normal Mode</button>
+                <button id="challenge-mode-button">Challenge Mode</button>
+                <button id="endless-mode-button">Endless Mode</button>
+                <a href="../../index.html" id="back-to-home-modal" class="button-link back-button">Back to Home</a> </div>
+        </div>
+
+        <div id="game-over-box" class="message-box">
+            <p id="game-over-message">Game Over!</p>
+            <p id="final-score">Final Score: 0</p>
+            <div class="modal-buttons">
+                <button id="restart-button">Play Again</button>
+                <a href="../../index.html" id="back-to-home-gameover" class="button-link back-button">Back to Home</a> </div>
+        </div>
+         <div id="level-up-box" class="message-box">
+            <p id="level-up-message">Level Up!</p>
+            <p id="next-level-instruction"></p>
+            <div class="modal-buttons">
+                 <button id="next-level-button">Continue</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Get references to DOM elements
+        const canvas = document.getElementById('game-board');
+        const ctx = canvas.getContext('2d');
+        const scoreDisplay = document.getElementById('score');
+        const levelDisplay = document.getElementById('level');
+        const livesDisplay = document.getElementById('lives-display');
+        const timerDisplay = document.getElementById('timer-display');
+        const instructionDisplay = document.getElementById('instruction');
+        const restartButton = document.getElementById('restart-button');
+        const gameOverBox = document.getElementById('game-over-box');
+        const gameOverMessage = document.getElementById('game-over-message');
+        const finalScoreDisplay = document.getElementById('final-score');
+        const levelUpBox = document.getElementById('level-up-box');
+        const levelUpMessage = document.getElementById('level-up-message');
+        const nextLevelInstruction = document.getElementById('next-level-instruction');
+        const nextLevelButton = document.getElementById('next-level-button');
+        const modeSelectModal = document.getElementById('mode-select-modal');
+        const normalModeButton = document.getElementById('normal-mode-button');
+        const challengeModeButton = document.getElementById('challenge-mode-button');
+        const endlessModeButton = document.getElementById('endless-mode-button');
+        const gameContainer = document.querySelector('.game-container');
+        // Back buttons added but no specific JS needed for them if using href
+
+        // --- Game Settings ---
+        const scale = 20; const rows = canvas.height / scale; const columns = canvas.width / scale;
+        const initialSpeed = 200; const speedIncreaseFactor = 0.9; const wordsPerLevel = 5;
+        const startingLives = 3; const maxWordsOnScreen = 3; const challengeTimePerLevel = 60;
+        const endlessTargetChangeCount = 5; const extraLifeSpawnChance = 0.1;
+
+        // --- Word Data & Levels ---
+        const words = { noun: ['tree', 'river', 'monkey', 'flower', 'sun', 'rock', 'fruit', 'leaf', 'bird', 'liana', 'vine', 'moss'], verb: ['swing', 'climb', 'grow', 'fly', 'eat', 'jump', 'shine', 'flow', 'sing', 'crawl', 'hunt', 'hide'], adjective: ['green', 'bright', 'tall', 'fast', 'juicy', 'loud', 'quiet', 'dark', 'warm', 'wild', 'big', 'calm'], adverb: ['quickly', 'slowly', 'loudly', 'softly', 'happily', 'wildly', 'high', 'low', 'gently', 'brightly', 'near', 'far'] };
+        const levels = [ { pos: 'noun', instruction: 'Collect: Nouns' }, { pos: 'verb', instruction: 'Collect: Verbs' }, { pos: 'adjective', instruction: 'Collect: Adjectives' }, { pos: 'adverb', instruction: 'Collect: Adverbs' }, { pos: 'mixed', instruction: 'Collect: ' } ];
+        const allPosTypes = Object.keys(words);
+
+        // --- Game State Variables ---
+        let snake; let direction; let wordsOnScreen = [];
+        let score; let lives; let currentLevelIndex;
+        let currentTargetPos; let gameInterval; let gameSpeed;
+        let isGameOver; let isPaused; let correctWordsCollected;
+        let gameMode = 'normal'; let endlessWordsCollectedSinceTargetChange = 0;
+        let timerValue = 0; let timerInterval = null; let extraLifeItem = null;
+
+        // --- Sound Effects & Music (Tone.js) ---
+        let correctSound, incorrectSound, gameOverSound, backgroundMusicLoop, extraLifeSound;
+        let soundsReady = false;
+        const musicNotes = ['C4', 'D4', 'E4', 'G4', 'A4', 'G4', 'E4', 'D4'];
+
+        // Function to initialize Tone.js audio components
+        function setupAudio() { /* ... (audio setup remains the same) ... */ if (!soundsReady) { try { correctSound = new Tone.Synth({ oscillator: { type: 'triangle' }, envelope: { attack: 0.01, decay: 0.1, sustain: 0.1, release: 0.2 } }).toDestination(); incorrectSound = new Tone.Synth({ oscillator: { type: 'square' }, envelope: { attack: 0.01, decay: 0.2, sustain: 0, release: 0.2 } }).toDestination(); gameOverSound = new Tone.MonoSynth({ volume: -8, oscillator: { type: "sawtooth" }, envelope: { attack: 0.01, decay: 0.5, sustain: 0.1, release: 1 }, filterEnvelope: { attack: 0.01, decay: 0.1, sustain: 0, release: 0.1, baseFrequency: 300, octaves: 2 } }).toDestination(); extraLifeSound = new Tone.PolySynth(Tone.Synth, { volume: -8, oscillator: { type: "sine" }, envelope: { attack: 0.01, decay: 0.1, sustain: 0.2, release: 0.2 } }).toDestination(); const musicSynth = new Tone.FMSynth({ volume: -20, harmonicity: 1.5, modulationIndex: 5, envelope: { attack: 0.01, decay: 0.2, sustain: 0.1, release: 0.5 }, modulationEnvelope: { attack: 0.1, decay: 0.1, sustain: 0.8, release: 0.5 } }).toDestination(); backgroundMusicLoop = new Tone.Sequence((time, note) => { musicSynth.triggerAttackRelease(note, "8n", time); }, musicNotes, "4n"); backgroundMusicLoop.loop = true; Tone.Transport.bpm.value = 90; soundsReady = true; console.log("Audio components initialized."); } catch (e) { console.error("Error initializing Tone.js components:", e); soundsReady = false; } } }
+
+        // Touch controls state variables
+        let touchStartX = 0, touchStartY = 0, touchEndX = 0, touchEndY = 0;
+
+        // --- Game Functions ---
+
+        // Starts the timer for Challenge mode
+        function startTimer() { /* ... (same as before) ... */ if (timerInterval) clearInterval(timerInterval); timerValue = challengeTimePerLevel; timerDisplay.textContent = `Time: ${timerValue}`; timerDisplay.style.display = 'inline'; timerInterval = setInterval(() => { timerValue--; timerDisplay.textContent = `Time: ${timerValue}`; if (timerValue <= 0) { clearInterval(timerInterval); timerInterval = null; gameOver("Time's up!"); } }, 1000); }
+        // Stops and hides the timer
+        function stopTimer() { /* ... (same as before) ... */ if (timerInterval) clearInterval(timerInterval); timerInterval = null; timerDisplay.style.display = 'none'; }
+
+        // Sets up the game state for the chosen mode
+        function setup() {
+            console.log("Setup function started for mode:", gameMode);
+            setupAudio(); // Ensure audio components are ready
+
+            // Reset common game state variables
+            snake = [{ x: Math.floor(columns / 2) * scale, y: Math.floor(rows / 2) * scale }];
+            direction = { x: scale, y: 0 };
+            score = 0; lives = startingLives; wordsOnScreen = []; extraLifeItem = null;
+            isGameOver = false; isPaused = false;
+            gameOverBox.style.display = 'none'; levelUpBox.style.display = 'none';
+            scoreDisplay.textContent = `Score: ${score}`; updateLivesDisplay();
+            stopTimer(); // Ensure timer is hidden initially
+
+            // Mode-specific setup logic
+            if (gameMode === 'endless') {
+                levelDisplay.style.display = 'none'; gameSpeed = initialSpeed;
+                endlessWordsCollectedSinceTargetChange = 0;
+                currentTargetPos = allPosTypes[Math.floor(Math.random() * allPosTypes.length)];
+                instructionDisplay.textContent = `Collect: ${currentTargetPos.charAt(0).toUpperCase() + currentTargetPos.slice(1)}s`;
+            } else { // Normal or Challenge mode
+                levelDisplay.style.display = 'inline'; currentLevelIndex = 0; correctWordsCollected = 0;
+                updateLevel(); // Sets speed and target POS
+                if (gameMode === 'challenge') {
+                    startTimer(); // Start timer
+                }
+            }
+
+            manageWords(); // Place initial word bubbles/items
+
+            // Start background music if audio ready and transport not started
+            if (soundsReady && Tone.Transport.state !== "started") {
+                 try {
+                     backgroundMusicLoop.start(0); Tone.Transport.start();
+                     console.log("Background music started.");
+                 } catch (e) {
+                     console.error("Error starting background music:", e);
+                 }
+            }
+
+            // Start the main game loop
+            if (gameInterval) clearInterval(gameInterval);
+            gameInterval = setInterval(gameLoop, gameSpeed);
+            console.log("Setup complete, game loop started.");
+        }
+
+        // Updates the heart icons display
+        function updateLivesDisplay() { /* ... (same as before) ... */ let heartsHTML = ''; for (let i = 0; i < startingLives; i++) { heartsHTML += (i < lives) ? '❤️' : '<span class="empty-heart">♡</span>'; } livesDisplay.innerHTML = heartsHTML; }
+
+        // Updates level, speed, and target POS (Normal/Challenge modes)
+        function updateLevel() { /* ... (same as before) ... */ if (gameMode === 'endless') return; if (currentLevelIndex >= levels.length) { gameOver("You completed all levels!"); return; } const levelData = levels[currentLevelIndex]; if (!levelData) { gameOver("Error: Invalid level data!"); return; } levelDisplay.textContent = `Level: ${currentLevelIndex + 1}`; if (levelData.pos === 'mixed') { currentTargetPos = allPosTypes[Math.floor(Math.random() * allPosTypes.length)]; instructionDisplay.textContent = `Collect: ${currentTargetPos.charAt(0).toUpperCase() + currentTargetPos.slice(1)}s`; } else { currentTargetPos = levelData.pos; instructionDisplay.textContent = levelData.instruction; } gameSpeed = initialSpeed * Math.pow(speedIncreaseFactor, currentLevelIndex); if (gameInterval && !isPaused) { clearInterval(gameInterval); gameInterval = setInterval(gameLoop, gameSpeed); } }
+
+        // Main game loop function
+        function gameLoop() { /* ... (same as before) ... */ if (isGameOver || isPaused) return; update(); draw(); }
+
+        // Updates snake position, handles collisions
+        function update() { /* ... (same as before) ... */ if (!snake || snake.length === 0) { gameOver("Error: Snake disappeared!"); return; } const head = { x: snake[0].x + direction.x, y: snake[0].y + direction.y }; if (head.x < 0 || head.x >= canvas.width || head.y < 0 || head.y >= canvas.height) { gameOver("Ouch! Hit the wall."); return; } for (let i = 1; i < snake.length; i++) { if (head.x === snake[i].x && head.y === snake[i].y) { gameOver("Oops! Ran into yourself."); return; } } snake.unshift(head); let ateExtraLife = false; if (extraLifeItem && head.x === extraLifeItem.x && head.y === extraLifeItem.y) { lives = Math.min(lives + 1, startingLives); updateLivesDisplay(); if (soundsReady) extraLifeSound.triggerAttackRelease(["C5", "E5", "G5"], "8n", Tone.now()); extraLifeItem = null; ateExtraLife = true; } let wordEatenIndex = -1; if (!ateExtraLife) { for (let i = 0; i < wordsOnScreen.length; i++) { if (wordsOnScreen[i] && head.x === wordsOnScreen[i].x && head.y === wordsOnScreen[i].y) { wordEatenIndex = i; break; } } } if (wordEatenIndex !== -1) { handleWordCollection(wordsOnScreen[wordEatenIndex], wordEatenIndex); } else if (!ateExtraLife) { snake.pop(); } }
+
+        // Handles the logic when a word bubble is collected
+        function handleWordCollection(eatenWord, index) { /* ... (same as before) ... */ const wordType = eatenWord.type; let correct = false; if (currentTargetPos === 'mixed') { correct = wordType === currentTargetPos; } else { correct = wordType === currentTargetPos; } if (index > -1 && index < wordsOnScreen.length) { wordsOnScreen.splice(index, 1); } else { console.error("Invalid index provided to handleWordCollection:", index); manageWords(); return; } if (correct) { score++; scoreDisplay.textContent = `Score: ${score}`; if (soundsReady) correctSound.triggerAttackRelease("C5", "8n", Tone.now()); if (extraLifeItem === null && Math.random() < extraLifeSpawnChance) { spawnExtraLife(); } else { manageWords(); } if (gameMode === 'endless') { endlessWordsCollectedSinceTargetChange++; if (endlessWordsCollectedSinceTargetChange >= endlessTargetChangeCount) { endlessWordsCollectedSinceTargetChange = 0; let newTargetPos; do { newTargetPos = allPosTypes[Math.floor(Math.random() * allPosTypes.length)]; } while (newTargetPos === currentTargetPos); currentTargetPos = newTargetPos; instructionDisplay.textContent = `Collect: ${currentTargetPos.charAt(0).toUpperCase() + currentTargetPos.slice(1)}s`; } } else { correctWordsCollected++; if (correctWordsCollected >= wordsPerLevel && currentLevelIndex < levels.length - 1) { levelUp(); } else if (correctWordsCollected >= wordsPerLevel && currentLevelIndex === levels.length - 1) { gameOver("Congratulations! You beat all levels!"); } } } else { lives--; updateLivesDisplay(); if (soundsReady) incorrectSound.triggerAttackRelease("F#3", "4n", Tone.now()); if (lives <= 0) { gameOver("Wrong word! Out of lives."); } else { manageWords(); } } }
+
+        // Handles level completion (Normal/Challenge modes)
+        function levelUp() { /* ... (same as before) ... */ if (gameMode === 'endless') return; isPaused = true; clearInterval(gameInterval); if (gameMode === 'challenge') stopTimer(); currentLevelIndex++; correctWordsCollected = 0; wordsOnScreen = []; extraLifeItem = null; if (currentLevelIndex >= levels.length) { gameOver("You won!"); return; } const nextLevelData = levels[currentLevelIndex]; let nextInstructionText = ''; if (nextLevelData.pos === 'mixed') { const availablePos = Object.keys(words); const randomPos = availablePos[Math.floor(Math.random() * availablePos.length)]; nextInstructionText = `Next: Collect ${randomPos.charAt(0).toUpperCase() + randomPos.slice(1)}s!`; } else { nextInstructionText = `Next: ${nextLevelData.instruction}`; } nextLevelInstruction.textContent = nextInstructionText; levelUpBox.style.display = 'block'; }
+        // Resumes game after level up pop-up (Normal/Challenge modes)
+        function continueToNextLevel() { /* ... (same as before) ... */ if (gameMode === 'endless') return; levelUpBox.style.display = 'none'; isPaused = false; updateLevel(); manageWords(); if (gameMode === 'challenge') { startTimer(); } gameInterval = setInterval(gameLoop, gameSpeed); }
+
+        // Checks if a given coordinate is occupied by snake, words, or extra life
+        function isPositionOccupied(x, y) { /* ... (same as before) ... */ if (snake && snake.length > 0) { for (const segment of snake) { if (segment.x === x && segment.y === y) return true; } } for (const word of wordsOnScreen) { if (word && word.x === x && word.y === y) return true; } if (extraLifeItem && extraLifeItem.x === x && extraLifeItem.y === y) return true; return false; }
+        // Ensures the maximum number of word bubbles are on screen
+        function manageWords() { /* ... (same as before) ... */ wordsOnScreen = wordsOnScreen.filter(word => word); while (wordsOnScreen.length < maxWordsOnScreen) { spawnWord(); } }
+        // Spawns a single word bubble at an unoccupied location
+        function spawnWord() { /* ... (same as before) ... */ let newWordPos; let wordText; let wordType; let isCorrectType = false; const correctWordExists = wordsOnScreen.some(word => word && word.type === currentTargetPos); const forceCorrect = !correctWordExists && wordsOnScreen.length < maxWordsOnScreen -1; if (forceCorrect || Math.random() < 0.4) { wordType = currentTargetPos; isCorrectType = true; } else { const allTypes = Object.keys(words); let incorrectTypes = allTypes.filter(t => t !== currentTargetPos); if (incorrectTypes.length === 0) incorrectTypes = allTypes; wordType = incorrectTypes[Math.floor(Math.random() * incorrectTypes.length)]; isCorrectType = false; } if ((gameMode !== 'endless' && levels[currentLevelIndex]?.pos === 'mixed' || gameMode === 'endless') && !isCorrectType && !correctWordExists && wordsOnScreen.length < maxWordsOnScreen -1) { wordType = currentTargetPos; } const wordList = words[wordType]; if (!wordList || wordList.length === 0) { wordText = "error"; } else { wordText = wordList[Math.floor(Math.random() * wordList.length)]; } let attempts = 0; let positionFound = false; do { newWordPos = { x: Math.floor(Math.random() * columns) * scale, y: Math.floor(Math.random() * rows) * scale }; if (!isPositionOccupied(newWordPos.x, newWordPos.y)) { positionFound = true; } attempts++; if (attempts > (rows * columns * 2)) { console.error("Could not place word."); return; } } while (!positionFound); wordsOnScreen.push({ x: newWordPos.x, y: newWordPos.y, text: wordText, type: wordType }); }
+        // Spawns the extra life item at an unoccupied location
+        function spawnExtraLife() { /* ... (same as before) ... */ let newPos; let attempts = 0; let positionFound = false; do { newPos = { x: Math.floor(Math.random() * columns) * scale, y: Math.floor(Math.random() * rows) * scale }; if (!isPositionOccupied(newPos.x, newPos.y)) { positionFound = true; } attempts++; if (attempts > (rows * columns)) { console.warn("Could not find space for extra life item."); manageWords(); return; } } while (!positionFound); extraLifeItem = { x: newPos.x, y: newPos.y }; console.log("Extra life spawned at:", extraLifeItem); }
+
+        // Draws the game elements (snake, words, extra life) on the canvas
+        function draw() { /* ... (same as before) ... */ if (!ctx) return; ctx.clearRect(0, 0, canvas.width, canvas.height); if (snake && snake.length > 0) { ctx.strokeStyle = '#388E3C'; ctx.lineWidth = 2; snake.forEach((segment, index) => { ctx.fillStyle = index === 0 ? '#2E7D32' : '#4CAF50'; ctx.fillRect(segment.x, segment.y, scale, scale); ctx.strokeRect(segment.x, segment.y, scale, scale); if (index === 0) { ctx.fillStyle = 'white'; ctx.beginPath(); let eyeX = segment.x + scale / 2, eyeY = segment.y + scale / 4; if (direction) { if (direction.x > 0) eyeX = segment.x + scale * 0.7; else if (direction.x < 0) eyeX = segment.x + scale * 0.3; else if (direction.y > 0) eyeY = segment.y + scale * 0.7; else if (direction.y < 0) eyeY = segment.y + scale * 0.3; } ctx.arc(eyeX, eyeY, scale / 8, 0, Math.PI * 2); ctx.fill(); ctx.fillStyle = 'black'; ctx.beginPath(); ctx.arc(eyeX, eyeY, scale / 16, 0, Math.PI * 2); ctx.fill(); } }); } wordsOnScreen.forEach(word => { if (!word) return; ctx.fillStyle = 'rgba(255, 255, 255, 0.9)'; ctx.strokeStyle = '#FFB74D'; ctx.lineWidth = 2; const bubblePadding = 5; const fontSize = scale * 0.7; ctx.font = `bold ${fontSize}px Poppins`; const textWidth = ctx.measureText(word.text).width; const bubbleWidth = textWidth + bubblePadding * 2; const bubbleHeight = fontSize + bubblePadding * 1.5; const bubbleX = word.x + (scale - bubbleWidth) / 2; const bubbleY = word.y + (scale - bubbleHeight) / 2; const radius = 8; ctx.beginPath(); ctx.moveTo(bubbleX + radius, bubbleY); ctx.lineTo(bubbleX + bubbleWidth - radius, bubbleY); ctx.quadraticCurveTo(bubbleX + bubbleWidth, bubbleY, bubbleX + bubbleWidth, bubbleY + radius); ctx.lineTo(bubbleX + bubbleWidth, bubbleY + bubbleHeight - radius); ctx.quadraticCurveTo(bubbleX + bubbleWidth, bubbleY + bubbleHeight, bubbleX + bubbleWidth - radius, bubbleY + bubbleHeight); ctx.lineTo(bubbleX + radius, bubbleY + bubbleHeight); ctx.quadraticCurveTo(bubbleX, bubbleY + bubbleHeight, bubbleX, bubbleY + bubbleHeight - radius); ctx.lineTo(bubbleX, bubbleY + radius); ctx.quadraticCurveTo(bubbleX, bubbleY, bubbleX + radius, bubbleY); ctx.closePath(); ctx.fill(); ctx.stroke(); ctx.fillStyle = '#D84315'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(word.text, bubbleX + bubbleWidth / 2, bubbleY + bubbleHeight / 2 + 1); }); if (extraLifeItem) { const heartX = extraLifeItem.x + scale / 2; const heartY = extraLifeItem.y + scale / 2; const heartSize = scale * 0.8; ctx.font = `${heartSize}px Poppins`; ctx.fillStyle = '#f48fb1'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText('💖', heartX, heartY); } }
+        // Handles keyboard input for changing direction
+        function changeDirection(event) { /* ... (same as before) ... */ if (isPaused || !direction) return; const keyPressed = event.key; const goingUp = direction.y === -scale; const goingDown = direction.y === scale; const goingLeft = direction.x === -scale; const goingRight = direction.x === scale; if ((keyPressed === 'ArrowUp' || keyPressed === 'w') && !goingDown) { direction = { x: 0, y: -scale }; } else if ((keyPressed === 'ArrowDown' || keyPressed === 's') && !goingUp) { direction = { x: 0, y: scale }; } else if ((keyPressed === 'ArrowLeft' || keyPressed === 'a') && !goingRight) { direction = { x: -scale, y: 0 }; } else if ((keyPressed === 'ArrowRight' || keyPressed === 'd') && !goingLeft) { direction = { x: scale, y: 0 }; } }
+        // Handles touch input for changing direction
+        function handleTouchStart(event) { /* ... (same as before) ... */ const touch = event.touches[0]; touchStartX = touch.clientX; touchStartY = touch.clientY; }
+        function handleTouchMove(event) { /* ... (same as before) ... */ event.preventDefault(); const touch = event.touches[0]; touchEndX = touch.clientX; touchEndY = touch.clientY; }
+        function handleTouchEnd() { /* ... (same as before) ... */ if (isPaused || !direction) return; const dx = touchEndX - touchStartX; const dy = touchEndY - touchStartY; const absDx = Math.abs(dx); const absDy = Math.abs(dy); if (Math.max(absDx, absDy) > 30) { const goingUp = direction.y === -scale; const goingDown = direction.y === scale; const goingLeft = direction.x === -scale; const goingRight = direction.x === scale; if (absDx > absDy) { if (dx > 0 && !goingLeft) { direction = { x: scale, y: 0 }; } else if (dx < 0 && !goingRight) { direction = { x: -scale, y: 0 }; } } else { if (dy > 0 && !goingUp) { direction = { x: 0, y: scale }; } else if (dy < 0 && !goingDown) { direction = { x: 0, y: -scale }; } } } touchStartX = 0; touchStartY = 0; touchEndX = 0; touchEndY = 0; }
+
+        // Handles game over state
+        function gameOver(message = "Game Over!") {
+            isGameOver = true; clearInterval(gameInterval); gameInterval = null; // Stop game loop
+            stopTimer(); // Stop timer if running
+
+            // Stop music and play game over sound
+            if (soundsReady) {
+                 Tone.Transport.stop(); backgroundMusicLoop.stop(0);
+                 gameOverSound.triggerAttackRelease("C3", "1n", Tone.now()); console.log("Background music stopped.");
+            }
+            // Display game over message and final score
+            gameOverMessage.textContent = message; finalScoreDisplay.textContent = `Final Score: ${score}`;
+            gameOverBox.style.display = 'block'; // Show game over pop-up
+        }
+
+        // --- Initial Setup on Load ---
+        // Sets up the initial UI state, showing the mode selection modal
+        function initializeGameUI() {
+            instructionDisplay.textContent = "Choose a mode!"; // Prompt user
+            levelDisplay.style.display = 'inline'; // Show level display initially
+            scoreDisplay.textContent = "Score: 0"; // Reset score
+            updateLivesDisplay(); // Show initial hearts
+            timerDisplay.style.display = 'none'; // Hide timer
+
+            gameContainer.style.visibility = 'hidden'; // Hide main game area initially
+
+            if (ctx) { ctx.clearRect(0, 0, canvas.width, canvas.height); } // Clear canvas
+            gameOverBox.style.display = 'none'; levelUpBox.style.display = 'none'; // Hide other pop-ups
+            modeSelectModal.style.display = 'block'; // Show mode selection
+            console.log("UI Initialized, showing mode select."); // Debug log
+        }
+
+        // --- Event Listeners ---
+        // Keyboard input
+        document.addEventListener('keydown', changeDirection);
+
+        // Common function to handle mode selection click
+        async function handleModeSelect(selectedMode) {
+            console.log("Mode selected:", selectedMode); // Debug log
+            gameMode = selectedMode;
+            // Try starting Tone.js context on click
+            try {
+                if (Tone.context.state !== 'running') {
+                    await Tone.start();
+                    console.log('Audio Context started by click!');
+                }
+            } catch (e) {
+                console.error("Error starting Tone.js on click:", e);
+                // Potentially alert user that sound might not work
+            }
+            modeSelectModal.style.display = 'none'; // Hide modal
+            gameContainer.style.visibility = 'visible'; // Show game container
+            setup(); // Start game
+        }
+
+        // Mode selection buttons
+        normalModeButton.addEventListener('click', () => handleModeSelect('normal'));
+        challengeModeButton.addEventListener('click', () => handleModeSelect('challenge'));
+        endlessModeButton.addEventListener('click', () => handleModeSelect('endless'));
+
+        // Restart button (from game over screen)
+        restartButton.addEventListener('click', initializeGameUI); // Show mode select again
+        // Continue button (from level up screen)
+        nextLevelButton.addEventListener('click', continueToNextLevel);
+        // Touch input on canvas
+        canvas.addEventListener('touchstart', handleTouchStart, { passive: false });
+        canvas.addEventListener('touchmove', handleTouchMove, { passive: false });
+        canvas.addEventListener('touchend', handleTouchEnd, { passive: false });
+
+        // Initialize the UI when the page loads (shows mode select modal)
+        initializeGameUI();
+
+    </script>
+</body>
+</ht

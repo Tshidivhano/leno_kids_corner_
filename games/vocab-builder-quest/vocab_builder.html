@@ -1,0 +1,486 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Vocab Builder Quest</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=MedievalSharp&display=swap" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.32/Tone.js"></script>
+    <style>
+        /* Basic styling */
+        body {
+            font-family: 'MedievalSharp', cursive;
+            background: linear-gradient(to bottom, #8a5a44, #583e2e);
+            color: #f0e6d2;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            padding: 20px;
+            box-sizing: border-box;
+            text-align: center;
+        }
+
+        /* Game container styling */
+        #game-container {
+            background-color: rgba(40, 30, 20, 0.8);
+            padding: 30px 40px;
+            border-radius: 15px;
+            box-shadow: 0 0 25px rgba(0, 0, 0, 0.7);
+            border: 4px solid #c6a779;
+            max-width: 700px;
+            width: 95%;
+            position: relative; /* Needed for absolute positioning of buttons */
+        }
+
+        /* Header section styling */
+        #header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #70563a;
+        }
+
+         /* Lives display styling */
+        #lives-container {
+            font-size: 1.8em;
+            color: #ff6b6b;
+             text-shadow: 1px 1px 2px #000;
+        }
+
+        /* Score display styling */
+        #score-container {
+            font-size: 1.4em;
+            color: #e4c89a;
+            font-weight: bold;
+        }
+
+        /* Heading styling */
+        h1 {
+            color: #e4c89a;
+            margin-top: 10px; /* Added margin-top */
+            margin-bottom: 10px;
+            font-size: 2.8em;
+             text-shadow: 2px 2px 5px #000;
+             /* Removed flex-grow and margin-left to allow centering between buttons */
+             text-align: center;
+             width: 100%; /* Ensure it takes full width for centering */
+             padding: 0 50px; /* Add padding to avoid overlap with corner buttons */
+             box-sizing: border-box; /* Include padding in width calculation */
+        }
+
+        /* Word display styling */
+        h2#word {
+             color: #f5eeda;
+             margin-bottom: 30px;
+             font-size: 2em;
+             font-weight: bold;
+             min-height: 60px;
+             padding: 10px;
+             background-color: rgba(0,0,0,0.2);
+             border-radius: 8px;
+        }
+
+        /* Options container styling */
+        #options-container {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 15px;
+            margin-top: 20px;
+        }
+
+        /* Button styling */
+        button.option-button {
+            font-family: 'MedievalSharp', cursive;
+            background: linear-gradient(to bottom, #a8875a, #8a6d4a);
+            color: #281e14;
+            border: 2px solid #70563a;
+            padding: 15px 20px;
+            border-radius: 10px;
+            cursor: pointer;
+            font-size: 1.3em;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+            text-align: left;
+        }
+        button.option-button:disabled {
+             cursor: not-allowed;
+             opacity: 0.7;
+        }
+        button.option-button:hover:not(:disabled) {
+            background: linear-gradient(to bottom, #bc9d6f, #9e7f5e);
+            box-shadow: 0 6px 12px rgba(0, 0, 0, 0.4);
+            transform: translateY(-2px);
+        }
+        button.option-button:active:not(:disabled) {
+             transform: translateY(1px);
+             box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+        }
+
+        /* Message area styling */
+        #message {
+            margin-top: 30px;
+            font-size: 1.4em;
+            min-height: 40px;
+            font-weight: bold;
+            color: #ffd700;
+        }
+
+        /* Feedback styling */
+        .correct { color: #90ee90; }
+        .incorrect { color: #f08080; }
+        .game-over { color: #ff4d4d; font-size: 1.6em; }
+
+        /* Restart Button Styling */
+        #restart-button {
+            font-family: 'MedievalSharp', cursive;
+            background: linear-gradient(to bottom, #6a8a5a, #4a6d4a);
+            color: #e0f0d0;
+            border: 2px solid #3a563a;
+            padding: 12px 25px;
+            border-radius: 10px;
+            cursor: pointer;
+            font-size: 1.3em;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+            margin-top: 20px;
+            display: none;
+        }
+        #restart-button:hover {
+             background: linear-gradient(to bottom, #7fa96f, #5e8f5e);
+             box-shadow: 0 6px 12px rgba(0, 0, 0, 0.4);
+        }
+
+        /* Corner Buttons Common Styles */
+        .corner-button {
+            font-family: sans-serif; /* Use a simple font for icons */
+            position: absolute;
+            top: 15px;
+            background-color: rgba(0,0,0,0.3);
+            color: #c6a779;
+            border: 1px solid #c6a779;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            font-size: 20px;
+            cursor: pointer;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            transition: background-color 0.3s ease, color 0.3s ease;
+            text-decoration: none; /* Remove underline from link */
+        }
+        .corner-button:hover {
+             background-color: rgba(0,0,0,0.5);
+             color: #e4c89a; /* Lighter gold on hover */
+         }
+
+         /* Mute Button Specific Style */
+        #mute-button {
+            right: 15px; /* Position on the right */
+        }
+
+         /* Home Button Specific Style */
+        #home-button {
+             left: 15px; /* Position on the left */
+         }
+
+
+        /* Responsive adjustments */
+         @media (max-width: 600px) {
+            h1 {
+                font-size: 1.8em;
+                padding: 0 45px; /* Adjust padding for smaller screens */
+                margin-top: 5px;
+            }
+            #header { flex-direction: column; align-items: stretch; }
+            #lives-container { text-align: left; margin-bottom: 5px; font-size: 1.5em;}
+            #score-container { text-align: right; font-size: 1.2em;}
+            h2#word { font-size: 1.6em; min-height: 50px; }
+            button.option-button { font-size: 1.1em; padding: 12px 15px; }
+            #message { font-size: 1.2em; min-height: 30px; }
+            #game-container { padding: 20px 15px; padding-top: 60px; /* Add padding top to avoid overlap with corner buttons */ }
+
+            .corner-button {
+                top: 10px;
+                width: 35px;
+                height: 35px;
+                font-size: 18px;
+            }
+             #mute-button { right: 10px; }
+             #home-button { left: 10px; }
+        }
+    </style>
+</head>
+<body>
+    <div id="game-container">
+        <a href="../../index.html" id="home-button" class="corner-button" title="Back to Home">🏠</a>
+        <button id="mute-button" class="corner-button" title="Mute/Unmute Sound">🔊</button>
+
+        <h1>Vocab Builder Quest</h1>
+
+        <div id="header">
+             <div id="lives-container">Lives: <span id="lives"></span></div>
+             <div id="score-container">Score: <span id="score">0</span></div>
+        </div>
+
+        <div id="question-area">
+            <h2 id="word">Loading...</h2>
+            <div id="options-container">
+                </div>
+        </div>
+        <div id="message">Choose the correct definition!</div>
+        <button id="restart-button">Restart Quest</button>
+    </div>
+
+    <script>
+        // --- Game Data ---
+        const definitionQuestions = [
+             { word: "Valiant", definition: "Brave and courageous", options: ["Cowardly and weak", "Lazy and tired", "Clever and tricky"] },
+            { word: "Quest", definition: "A long search for something important", options: ["A short nap", "A quick snack", "A simple task"] },
+            { word: "Realm", definition: "A kingdom or domain", options: ["A type of fruit", "A musical instrument", "A weather pattern"] },
+            { word: "Sorcery", definition: "The use of magic", options: ["Cooking techniques", "Gardening skills", "Scientific experiments"] },
+            { word: "Feast", definition: "A large, elaborate meal", options: ["A small argument", "A quiet whisper", "A brief moment"] },
+            { word: "Steed", definition: "A horse, especially a spirited one for riding", options: ["A type of boat", "A small dog", "A farming tool"] },
+            { word: "Bard", definition: "A poet and storyteller, often reciting epics", options: ["A blacksmith", "A baker", "A guard"] },
+            { word: "Forge", definition: "A place where metal is heated and hammered", options: ["A library", "A garden", "A river"] },
+            { word: "Decree", definition: "An official order issued by authority", options: ["A friendly suggestion", "A popular rumor", "A funny joke"] },
+            { word: "Garrison", definition: "Troops stationed in a fortress or town", options: ["A group of traveling merchants", "A collection of rare books", "A type of spice"] }
+        ];
+
+        const synonymQuestions = [
+            { word: "Brave", synonym: "Valiant", options: ["Timid", "Fearful", "Cowardly"] },
+            { word: "Joyful", synonym: "Happy", options: ["Sad", "Angry", "Gloomy"] },
+            { word: "Large", synonym: "Huge", options: ["Tiny", "Small", "Minute"] },
+            { word: "Quick", synonym: "Fast", options: ["Slow", "Sluggish", "Leisurely"] },
+            { word: "Ancient", synonym: "Old", options: ["New", "Modern", "Recent"] }
+        ];
+
+        // --- Game State ---
+        let currentQuestionIndex = 0;
+        let score = 0;
+        let lives = 5;
+        let questionsOrder = [];
+        let currentQuestions = definitionQuestions;
+        let gameMode = 'definition';
+        let isMuted = false;
+        let audioStarted = false;
+
+        // --- DOM Elements ---
+        const wordElement = document.getElementById('word');
+        const optionsContainer = document.getElementById('options-container');
+        const messageElement = document.getElementById('message');
+        const scoreElement = document.getElementById('score');
+        const livesElement = document.getElementById('lives');
+        const restartButton = document.getElementById('restart-button');
+        const muteButton = document.getElementById('mute-button');
+        // No need for homeButton element in JS unless we add interactions
+
+        // --- Audio Setup (Tone.js) ---
+        let correctSound, incorrectSound, backgroundMusicLoop;
+
+        correctSound = new Tone.Synth({
+            oscillator: { type: 'triangle' },
+            envelope: { attack: 0.01, decay: 0.2, sustain: 0.1, release: 0.3 }
+        }).toDestination();
+
+        incorrectSound = new Tone.Synth({
+            oscillator: { type: 'square' },
+            envelope: { attack: 0.02, decay: 0.3, sustain: 0, release: 0.3 }
+        }).toDestination();
+
+         const backgroundSynth = new Tone.Synth({
+            oscillator: { type: 'sine' },
+            volume: -18,
+            envelope: { attack: 0.1, decay: 0.2, sustain: 0.1, release: 0.5 }
+        }).toDestination();
+
+        const melody = [
+            'C4', 'E4', 'G4', 'E4', 'A4', 'G4', 'F4', 'D4',
+            'C4', 'D4', 'E4', 'C4', 'G3', 'B3', 'C4', null
+        ];
+        let melodyIndex = 0;
+
+         backgroundMusicLoop = new Tone.Loop(time => {
+            let note = melody[melodyIndex % melody.length];
+             if (note) {
+                 backgroundSynth.triggerAttackRelease(note, '8n', time);
+             }
+             melodyIndex++;
+         }, '2n');
+
+        // Function to start Tone.js audio context
+        async function startAudio() {
+            if (!audioStarted) {
+                await Tone.start();
+                console.log('Audio context started');
+                audioStarted = true;
+                 if (!isMuted) {
+                     Tone.Transport.start();
+                     backgroundMusicLoop.start(0);
+                 }
+            }
+        }
+
+        // --- Functions ---
+        function shuffleArray(array) {
+            for (let i = array.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [array[i], array[j]] = [array[j], array[i]];
+            }
+        }
+
+        function updateLivesDisplay() {
+            livesElement.textContent = '♥'.repeat(lives);
+        }
+
+        function displayQuestion() {
+            optionsContainer.innerHTML = '';
+            messageElement.textContent = 'Choose the correct definition!';
+            messageElement.className = '';
+            restartButton.style.display = 'none';
+
+            if (lives <= 0) {
+                wordElement.textContent = "Quest Failed!";
+                messageElement.textContent = `Game Over! Final Score: ${score}`;
+                messageElement.className = 'game-over';
+                optionsContainer.innerHTML = '';
+                restartButton.style.display = 'block';
+                if (audioStarted) backgroundMusicLoop.stop();
+                return;
+            }
+
+            if (currentQuestionIndex >= questionsOrder.length) {
+                wordElement.textContent = "Quest Complete!";
+                messageElement.textContent = `Congratulations! Final Score: ${score}`;
+                messageElement.className = 'correct';
+                optionsContainer.innerHTML = '';
+                restartButton.style.display = 'block';
+                if (audioStarted) backgroundMusicLoop.stop();
+                return;
+            }
+
+            const questionIndex = questionsOrder[currentQuestionIndex];
+            const question = currentQuestions[questionIndex];
+            wordElement.textContent = question.word;
+
+            let correctAnswer = '';
+            let options = [];
+
+            if (gameMode === 'definition') {
+                correctAnswer = question.definition;
+                options = [...question.options, question.definition];
+                messageElement.textContent = 'Choose the correct definition!';
+            } else if (gameMode === 'synonym') {
+                correctAnswer = question.synonym;
+                options = [...question.options, question.synonym];
+                 messageElement.textContent = 'Choose the correct synonym!';
+            }
+
+            shuffleArray(options);
+
+            options.forEach(option => {
+                const button = document.createElement('button');
+                button.classList.add('option-button');
+                button.textContent = option;
+                button.onclick = () => handleAnswer(option === correctAnswer, button, correctAnswer);
+                optionsContainer.appendChild(button);
+            });
+        }
+
+        function handleAnswer(isCorrect, button, correctAnswerText) {
+            startAudio();
+
+            const buttons = optionsContainer.querySelectorAll('button.option-button');
+            buttons.forEach(btn => btn.disabled = true);
+
+            if (isCorrect) {
+                messageElement.textContent = "Correct!";
+                messageElement.className = 'correct';
+                button.style.backgroundColor = '#90ee90';
+                button.style.borderColor = '#5dbb5d';
+                score++;
+                scoreElement.textContent = score;
+                if (!isMuted && correctSound) {
+                    correctSound.triggerAttackRelease('C5', '8n', Tone.now());
+                }
+            } else {
+                lives--;
+                updateLivesDisplay();
+                messageElement.textContent = `Incorrect. The answer was: ${correctAnswerText}`;
+                messageElement.className = 'incorrect';
+                button.style.backgroundColor = '#f08080';
+                button.style.borderColor = '#d86060';
+                if (!isMuted && incorrectSound) {
+                     incorrectSound.triggerAttackRelease('C3', '4n', Tone.now());
+                }
+
+                buttons.forEach(btn => {
+                    if (btn.textContent === correctAnswerText) {
+                        btn.style.backgroundColor = '#90ee90';
+                        btn.style.borderColor = '#5dbb5d';
+                    }
+                });
+            }
+
+            currentQuestionIndex++;
+            setTimeout(displayQuestion, lives <= 0 ? 1500 : 2500);
+        }
+
+         function toggleMute() {
+             isMuted = !isMuted;
+             muteButton.textContent = isMuted ? '🔇' : '🔊';
+             muteButton.title = isMuted ? 'Unmute Sound' : 'Mute Sound';
+
+             if (audioStarted) {
+                 if (isMuted) {
+                     Tone.Transport.pause();
+                 } else {
+                     Tone.Transport.start();
+                     if (backgroundMusicLoop.state !== 'started' && lives > 0 && currentQuestionIndex < questionsOrder.length) {
+                        backgroundMusicLoop.start(0);
+                     }
+                 }
+             }
+             console.log("Muted:", isMuted);
+         }
+
+        function startGame() {
+            currentQuestionIndex = 0;
+            score = 0;
+            lives = 5;
+            scoreElement.textContent = score;
+            updateLivesDisplay();
+            messageElement.className = '';
+            restartButton.style.display = 'none';
+
+            currentQuestions = gameMode === 'definition' ? definitionQuestions : synonymQuestions;
+
+            questionsOrder = Array.from(Array(currentQuestions.length).keys());
+            shuffleArray(questionsOrder);
+
+             if (audioStarted && !isMuted) {
+                 melodyIndex = 0;
+                 Tone.Transport.position = 0;
+                 backgroundMusicLoop.start(0);
+                 Tone.Transport.start();
+             }
+
+            displayQuestion();
+        }
+
+        // --- Event Listeners ---
+        restartButton.onclick = startGame;
+        muteButton.onclick = toggleMute;
+
+        // --- Initialize Game ---
+        startGame();
+
+    </script>
+</body>
+</html>
